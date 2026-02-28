@@ -1,0 +1,1914 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>SGQ – Mercedes-Benz</title>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --mb-blue: #00adef;
+    --mb-dark: #0a0e1a;
+    --mb-panel: #111827;
+    --mb-card: #1a2236;
+    --mb-border: #1e2d45;
+    --mb-accent: #00c6ff;
+    --mb-green: #10b981;
+    --mb-red: #ef4444;
+    --mb-yellow: #f59e0b;
+    --mb-purple: #8b5cf6;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Barlow', sans-serif; background: var(--mb-dark); color: #e2e8f0; min-height: 100vh; overflow-x: hidden; }
+  
+  /* Sidebar */
+  #sidebar {
+    position: fixed; left: 0; top: 0; bottom: 0; width: 240px;
+    background: var(--mb-panel);
+    border-right: 1px solid var(--mb-border);
+    z-index: 100; display: flex; flex-direction: column;
+    transition: transform 0.3s ease;
+  }
+  #sidebar.closed { transform: translateX(-240px); }
+  .logo-area {
+    padding: 20px 20px 16px;
+    border-bottom: 1px solid var(--mb-border);
+    display: flex; align-items: center; gap: 12px;
+  }
+  .logo-circle {
+    width: 40px; height: 40px; border-radius: 50%;
+    background: linear-gradient(135deg, #0a0e1a, #1a2236);
+    border: 2px solid var(--mb-accent);
+    display: flex; align-items: center; justify-content: center;
+    font-family: 'Barlow Condensed', sans-serif;
+    font-weight: 700; font-size: 13px; color: var(--mb-accent);
+    letter-spacing: 1px;
+  }
+  .logo-text { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 14px; line-height: 1.2; }
+  .logo-text span { display: block; color: #64748b; font-weight: 400; font-size: 11px; letter-spacing: 1px; text-transform: uppercase; }
+
+  nav { flex: 1; padding: 12px 0; overflow-y: auto; }
+  .nav-section { padding: 6px 16px 4px; font-size: 10px; color: #475569; text-transform: uppercase; letter-spacing: 1.5px; font-weight: 600; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px;
+    padding: 10px 20px; cursor: pointer; font-size: 14px; font-weight: 500;
+    color: #94a3b8; transition: all 0.2s; border-left: 3px solid transparent;
+    white-space: nowrap;
+  }
+  .nav-item:hover { background: rgba(0,198,255,0.06); color: #e2e8f0; }
+  .nav-item.active { background: rgba(0,198,255,0.1); color: var(--mb-accent); border-left-color: var(--mb-accent); }
+  .nav-item .icon { font-size: 16px; width: 20px; text-align: center; flex-shrink: 0; }
+  .sidebar-footer { padding: 16px; border-top: 1px solid var(--mb-border); font-size: 11px; color: #475569; }
+
+  /* Main */
+  #main { margin-left: 240px; min-height: 100vh; transition: margin 0.3s ease; }
+  #main.full { margin-left: 0; }
+
+  /* Top bar */
+  .topbar {
+    position: sticky; top: 0; z-index: 50;
+    background: rgba(10,14,26,0.95); backdrop-filter: blur(12px);
+    border-bottom: 1px solid var(--mb-border);
+    padding: 0 24px; height: 56px;
+    display: flex; align-items: center; justify-content: space-between;
+  }
+  .menu-toggle { cursor: pointer; padding: 8px; color: #94a3b8; display: none; }
+  @media (max-width: 768px) {
+    #sidebar { transform: translateX(-240px); }
+    #sidebar.open { transform: translateX(0); }
+    #main { margin-left: 0 !important; }
+    .menu-toggle { display: flex; }
+  }
+  .topbar-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; color: #e2e8f0; letter-spacing: 0.5px; }
+  .topbar-right { display: flex; align-items: center; gap: 12px; }
+  .badge-live { background: rgba(16,185,129,0.15); color: var(--mb-green); font-size: 10px; font-weight: 600; padding: 2px 8px; border-radius: 99px; border: 1px solid rgba(16,185,129,0.3); letter-spacing: 1px; text-transform: uppercase; }
+
+  /* Page */
+  .page { display: none; padding: 24px; }
+  .page.active { display: block; }
+
+  /* Cards */
+  .kpi-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .kpi-card {
+    background: var(--mb-card); border: 1px solid var(--mb-border);
+    border-radius: 12px; padding: 20px 16px;
+    position: relative; overflow: hidden;
+  }
+  .kpi-card::before {
+    content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+    background: var(--accent-color, var(--mb-accent));
+  }
+  .kpi-label { font-size: 11px; color: #64748b; text-transform: uppercase; letter-spacing: 1px; font-weight: 600; margin-bottom: 8px; }
+  .kpi-value { font-family: 'Barlow Condensed', sans-serif; font-size: 32px; font-weight: 700; line-height: 1; }
+  .kpi-sub { font-size: 11px; color: #64748b; margin-top: 6px; }
+  .kpi-trend { font-size: 11px; font-weight: 600; }
+
+  /* Charts */
+  .chart-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; margin-bottom: 24px; }
+  .chart-card {
+    background: var(--mb-card); border: 1px solid var(--mb-border);
+    border-radius: 12px; padding: 20px;
+  }
+  .chart-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 600; font-size: 14px; text-transform: uppercase; letter-spacing: 1px; color: #94a3b8; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+  .chart-title::before { content: ''; display: block; width: 3px; height: 16px; background: var(--mb-accent); border-radius: 2px; }
+  canvas { max-height: 240px; }
+
+  /* Section header */
+  .section-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 20px; flex-wrap: wrap; gap: 12px; }
+  .section-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 22px; letter-spacing: 0.5px; }
+  
+  /* Buttons */
+  .btn { display: inline-flex; align-items: center; gap: 6px; padding: 9px 18px; border-radius: 8px; font-size: 13px; font-weight: 600; cursor: pointer; transition: all 0.2s; border: none; white-space: nowrap; }
+  .btn-primary { background: var(--mb-accent); color: #0a0e1a; }
+  .btn-primary:hover { background: #33d4ff; transform: translateY(-1px); }
+  .btn-secondary { background: rgba(255,255,255,0.06); color: #e2e8f0; border: 1px solid var(--mb-border); }
+  .btn-secondary:hover { background: rgba(255,255,255,0.1); }
+  .btn-danger { background: rgba(239,68,68,0.15); color: var(--mb-red); border: 1px solid rgba(239,68,68,0.3); }
+  .btn-sm { padding: 5px 12px; font-size: 12px; }
+
+  /* Forms */
+  .form-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; }
+  .form-group { display: flex; flex-direction: column; gap: 6px; }
+  .form-group.full { grid-column: 1 / -1; }
+  label { font-size: 12px; color: #64748b; font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+  input, select, textarea {
+    background: #0d1626; border: 1px solid var(--mb-border);
+    color: #e2e8f0; border-radius: 8px; padding: 10px 12px;
+    font-family: 'Barlow', sans-serif; font-size: 14px;
+    width: 100%; outline: none; transition: border 0.2s;
+  }
+  input:focus, select:focus, textarea:focus { border-color: var(--mb-accent); }
+  select option { background: #111827; }
+  textarea { resize: vertical; min-height: 90px; }
+
+  /* Tables */
+  .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--mb-border); }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  thead { background: rgba(0,198,255,0.06); }
+  th { padding: 12px 16px; text-align: left; font-size: 11px; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 600; white-space: nowrap; border-bottom: 1px solid var(--mb-border); }
+  td { padding: 12px 16px; border-bottom: 1px solid rgba(30,45,69,0.5); vertical-align: top; }
+  tr:last-child td { border-bottom: none; }
+  tr:hover td { background: rgba(255,255,255,0.02); }
+
+  /* Status badges */
+  .badge { display: inline-flex; align-items: center; padding: 3px 10px; border-radius: 99px; font-size: 11px; font-weight: 600; white-space: nowrap; }
+  .badge-open { background: rgba(239,68,68,0.15); color: #f87171; border: 1px solid rgba(239,68,68,0.25); }
+  .badge-progress { background: rgba(245,158,11,0.15); color: #fbbf24; border: 1px solid rgba(245,158,11,0.25); }
+  .badge-done { background: rgba(16,185,129,0.15); color: #34d399; border: 1px solid rgba(16,185,129,0.25); }
+  .badge-late { background: rgba(239,68,68,0.25); color: #ff6b6b; border: 1px solid rgba(239,68,68,0.4); }
+  .badge-na { background: rgba(100,116,139,0.15); color: #94a3b8; border: 1px solid rgba(100,116,139,0.25); }
+
+  /* Tabs */
+  .tabs { display: flex; border-bottom: 1px solid var(--mb-border); margin-bottom: 24px; gap: 0; overflow-x: auto; }
+  .tab { padding: 10px 20px; font-size: 13px; font-weight: 600; color: #64748b; cursor: pointer; border-bottom: 2px solid transparent; white-space: nowrap; transition: all 0.2s; }
+  .tab:hover { color: #e2e8f0; }
+  .tab.active { color: var(--mb-accent); border-bottom-color: var(--mb-accent); }
+
+  /* Modal */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.75);
+    z-index: 200; display: none; align-items: flex-start; justify-content: center;
+    padding: 20px; overflow-y: auto; backdrop-filter: blur(4px);
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--mb-panel); border: 1px solid var(--mb-border);
+    border-radius: 16px; width: 100%; max-width: 900px;
+    margin: auto; animation: slideUp 0.3s ease;
+  }
+  @keyframes slideUp { from { opacity:0; transform: translateY(30px); } to { opacity:1; transform: translateY(0); } }
+  .modal-header { padding: 20px 24px; border-bottom: 1px solid var(--mb-border); display: flex; align-items: center; justify-content: space-between; }
+  .modal-title { font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; }
+  .modal-body { padding: 24px; }
+  .modal-footer { padding: 16px 24px; border-top: 1px solid var(--mb-border); display: flex; justify-content: flex-end; gap: 10px; }
+  .close-btn { cursor: pointer; color: #64748b; font-size: 20px; line-height: 1; padding: 4px; }
+  .close-btn:hover { color: #e2e8f0; }
+
+  /* Panel card */
+  .panel { background: var(--mb-card); border: 1px solid var(--mb-border); border-radius: 12px; padding: 20px; margin-bottom: 16px; }
+  .panel-title { font-weight: 600; font-size: 14px; color: #94a3b8; margin-bottom: 14px; display: flex; align-items: center; gap: 8px; }
+
+  /* Ishikawa */
+  .ishikawa-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+  .fish-bone { background: #0d1626; border: 1px solid var(--mb-border); border-radius: 10px; padding: 16px; }
+  .fish-bone-title { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; color: var(--mb-accent); margin-bottom: 10px; }
+  .fish-cause { display: flex; align-items: center; gap: 8px; padding: 6px 0; font-size: 13px; border-bottom: 1px solid rgba(30,45,69,0.5); }
+  .fish-cause:last-child { border-bottom: none; }
+
+  /* Score ring */
+  .score-ring { position: relative; width: 80px; height: 80px; flex-shrink: 0; }
+  .score-ring svg { transform: rotate(-90deg); }
+  .score-ring .score-text { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; font-family: 'Barlow Condensed', sans-serif; font-weight: 700; font-size: 18px; }
+
+  /* Alert banner */
+  .alert-banner { background: rgba(239,68,68,0.1); border: 1px solid rgba(239,68,68,0.25); border-radius: 10px; padding: 12px 16px; margin-bottom: 20px; display: flex; align-items: center; gap: 10px; font-size: 13px; color: #f87171; }
+
+  /* Google Sheets Info */
+  .gs-info { background: rgba(0,198,255,0.05); border: 1px solid rgba(0,198,255,0.15); border-radius: 12px; padding: 16px 20px; margin-bottom: 20px; font-size: 13px; color: #94a3b8; }
+  .gs-info strong { color: var(--mb-accent); }
+
+  /* Responsive */
+  @media (max-width: 640px) {
+    .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+    .chart-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .ishikawa-grid { grid-template-columns: 1fr; }
+    .page { padding: 16px; }
+  }
+
+  /* Overlay backdrop for mobile sidebar */
+  #sidebar-backdrop { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:99; }
+  #sidebar-backdrop.show { display:block; }
+
+  /* Scrollbar */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: #1e2d45; border-radius: 4px; }
+
+  /* Animation */
+  .fade-in { animation: fadeIn 0.4s ease; }
+  @keyframes fadeIn { from { opacity:0; } to { opacity:1; } }
+
+  /* GAS setup info box */
+  .setup-box { background: #0d1626; border: 1px solid var(--mb-border); border-radius: 10px; padding: 16px; font-family: 'Courier New', monospace; font-size: 12px; color: #94a3b8; overflow-x: auto; margin: 12px 0; white-space: pre-wrap; line-height: 1.6; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar Backdrop (mobile) -->
+<div id="sidebar-backdrop" onclick="toggleSidebar()"></div>
+
+<!-- Sidebar -->
+<aside id="sidebar">
+  <div class="logo-area">
+    <div class="logo-circle">MB</div>
+    <div class="logo-text">
+      Mercedes-Benz
+      <span>Gestão da Qualidade</span>
+    </div>
+  </div>
+  <nav>
+    <div class="nav-section">Principal</div>
+    <div class="nav-item active" onclick="showPage('dashboard', this)">
+      <span class="icon">◈</span> Dashboard
+    </div>
+    <div class="nav-item" onclick="showPage('aq', this)">
+      <span class="icon">⚡</span> Alertas da Qualidade
+    </div>
+    <div class="nav-section">Ferramentas</div>
+    <div class="nav-item" onclick="showPage('auditorias', this)">
+      <span class="icon">✓</span> Auditorias
+    </div>
+    <div class="nav-item" onclick="showPage('processos', this)">
+      <span class="icon">⬡</span> Processos
+    </div>
+    <div class="nav-item" onclick="showPage('pop', this)">
+      <span class="icon">📋</span> POP / IT
+    </div>
+    <div class="nav-section">Análise</div>
+    <div class="nav-item" onclick="showPage('indicadores', this)">
+      <span class="icon">📊</span> Indicadores
+    </div>
+    <div class="nav-section">Configuração</div>
+    <div class="nav-item" onclick="showPage('config', this)">
+      <span class="icon">⚙</span> Configurar Google Sheets
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    SGQ v1.0 · Mercedes-Benz<br>
+    <span id="sidebar-date"></span>
+  </div>
+</aside>
+
+<!-- Main -->
+<div id="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div style="display:flex;align-items:center;gap:12px;">
+      <div class="menu-toggle" onclick="toggleSidebar()">
+        <svg width="22" height="22" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16M4 18h16"/>
+        </svg>
+      </div>
+      <div class="topbar-title" id="topbar-title">Dashboard Executivo</div>
+    </div>
+    <div class="topbar-right">
+      <span class="badge-live">● AO VIVO</span>
+      <span id="topbar-time" style="font-size:13px;color:#64748b;"></span>
+    </div>
+  </div>
+
+  <!-- =================== DASHBOARD =================== -->
+  <div id="page-dashboard" class="page active fade-in">
+    <div class="section-header">
+      <div class="section-title">Dashboard Executivo</div>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Atualizar</button>
+        <button class="btn btn-secondary btn-sm" onclick="showPage('config', document.querySelector('[onclick*=config]'))">⚙ Configurar Sheets</button>
+      </div>
+    </div>
+
+    <!-- KPIs -->
+    <div class="kpi-grid">
+      <div class="kpi-card" style="--accent-color:#ef4444">
+        <div class="kpi-label">AQ Abertas</div>
+        <div class="kpi-value" id="kpi-aq-open" style="color:#f87171">–</div>
+        <div class="kpi-sub">em andamento</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#10b981">
+        <div class="kpi-label">AQ Encerradas</div>
+        <div class="kpi-value" id="kpi-aq-closed" style="color:#34d399">–</div>
+        <div class="kpi-sub">concluídas</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#8b5cf6">
+        <div class="kpi-label">Reincidências</div>
+        <div class="kpi-value" id="kpi-reincidencias" style="color:#a78bfa">–</div>
+        <div class="kpi-sub">no período</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#f59e0b">
+        <div class="kpi-label">Ações Atrasadas</div>
+        <div class="kpi-value" id="kpi-atrasadas" style="color:#fbbf24">–</div>
+        <div class="kpi-sub">vencidas</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#00c6ff">
+        <div class="kpi-label">Tempo Médio</div>
+        <div class="kpi-value" id="kpi-tempo" style="color:#00c6ff">–</div>
+        <div class="kpi-sub">dias para fechar</div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#ec4899">
+        <div class="kpi-label">Custo NQ (R$)</div>
+        <div class="kpi-value" id="kpi-custo" style="color:#f472b6;font-size:22px">–</div>
+        <div class="kpi-sub">custo total</div>
+      </div>
+    </div>
+
+    <!-- Charts Row 1 -->
+    <div class="chart-grid">
+      <div class="chart-card" style="grid-column: span 1;">
+        <div class="chart-title">Top 5 Causas (Pareto)</div>
+        <canvas id="chartPareto"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">AQ por Departamento</div>
+        <canvas id="chartDepto"></canvas>
+      </div>
+    </div>
+
+    <!-- Charts Row 2 -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">Tendência Mensal de AQ</div>
+        <canvas id="chartTrend"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Score de Auditoria por Unidade</div>
+        <canvas id="chartScore"></canvas>
+      </div>
+    </div>
+
+    <!-- Custo NQ -->
+    <div class="chart-card" style="margin-bottom:0">
+      <div class="chart-title">Custo da Não Qualidade por Departamento</div>
+      <div style="max-height:220px;">
+        <canvas id="chartCNQ"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== ALERTAS DA QUALIDADE =================== -->
+  <div id="page-aq" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Alertas da Qualidade</div>
+      <button class="btn btn-primary" onclick="openAQModal()">+ Nova AQ</button>
+    </div>
+
+    <!-- Filters -->
+    <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+      <select id="filter-unidade" style="width:auto;" onchange="filterAQTable()">
+        <option value="">Todas unidades</option>
+        <option>Sorocaba</option><option>Itu</option><option>Itapeva</option>
+      </select>
+      <select id="filter-depto" style="width:auto;" onchange="filterAQTable()">
+        <option value="">Todos departamentos</option>
+        <option>Oficina</option><option>Funilaria</option><option>Pneus</option>
+        <option>Vendas Caminhões</option><option>Vendas Vans</option>
+        <option>Vendas Ônibus</option><option>Predial</option>
+      </select>
+      <select id="filter-status" style="width:auto;" onchange="filterAQTable()">
+        <option value="">Todos status</option>
+        <option>Aberto</option><option>Em Andamento</option><option>Concluído</option>
+      </select>
+    </div>
+
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Nº AQ</th><th>Data</th><th>Unidade</th><th>Depto</th>
+            <th>Origem</th><th>Problema</th><th>Custo R$</th><th>Status</th><th>Ações</th>
+          </tr>
+        </thead>
+        <tbody id="aq-tbody">
+          <tr><td colspan="9" style="text-align:center;color:#475569;padding:32px;">Nenhum registro. Clique em "+ Nova AQ" para adicionar.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- =================== AUDITORIAS =================== -->
+  <div id="page-auditorias" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Auditorias</div>
+      <button class="btn btn-primary" onclick="openAudModal()">+ Nova Auditoria</button>
+    </div>
+
+    <div class="table-wrap" style="margin-bottom:20px;">
+      <table>
+        <thead>
+          <tr><th>Data</th><th>Unidade</th><th>Área</th><th>Auditor</th><th>Score</th><th>OK</th><th>NOK</th><th>N/A</th><th>Ações</th></tr>
+        </thead>
+        <tbody id="aud-tbody">
+          <tr><td colspan="9" style="text-align:center;color:#475569;padding:32px;">Nenhuma auditoria registrada.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- =================== PROCESSOS =================== -->
+  <div id="page-processos" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Mapeamento de Processos</div>
+      <button class="btn btn-primary" onclick="openProcessoModal()">+ Novo Processo</button>
+    </div>
+    <div id="processos-list" class="chart-grid">
+      <div style="grid-column:1/-1;text-align:center;padding:40px;color:#475569;">Nenhum processo cadastrado.</div>
+    </div>
+  </div>
+
+  <!-- =================== POP / IT =================== -->
+  <div id="page-pop" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Banco de POP / IT</div>
+      <button class="btn btn-primary" onclick="openPOPModal()">+ Novo POP</button>
+    </div>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>Código</th><th>Processo</th><th>Versão</th><th>Responsável</th><th>Data Rev.</th><th>Ações</th></tr>
+        </thead>
+        <tbody id="pop-tbody">
+          <tr><td colspan="6" style="text-align:center;color:#475569;padding:32px;">Nenhum POP cadastrado.</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+
+  <!-- =================== INDICADORES =================== -->
+  <div id="page-indicadores" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Indicadores de Qualidade</div>
+    </div>
+
+    <!-- Unidades score cards -->
+    <div class="kpi-grid" style="grid-template-columns: repeat(3, 1fr);">
+      <div class="kpi-card" style="--accent-color:#00c6ff;display:flex;align-items:center;gap:16px;">
+        <div class="score-ring" id="ring-sor">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#1e2d45" stroke-width="8"/>
+            <circle id="ring-sor-circle" cx="40" cy="40" r="32" fill="none" stroke="#00c6ff" stroke-width="8" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round"/>
+          </svg>
+          <div class="score-text" id="ring-sor-text">–%</div>
+        </div>
+        <div>
+          <div class="kpi-label">Sorocaba</div>
+          <div style="font-size:13px;color:#64748b;">Score auditoria</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#10b981;display:flex;align-items:center;gap:16px;">
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#1e2d45" stroke-width="8"/>
+            <circle id="ring-itu-circle" cx="40" cy="40" r="32" fill="none" stroke="#10b981" stroke-width="8" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round"/>
+          </svg>
+          <div class="score-text" id="ring-itu-text">–%</div>
+        </div>
+        <div>
+          <div class="kpi-label">Itu</div>
+          <div style="font-size:13px;color:#64748b;">Score auditoria</div>
+        </div>
+      </div>
+      <div class="kpi-card" style="--accent-color:#8b5cf6;display:flex;align-items:center;gap:16px;">
+        <div class="score-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="32" fill="none" stroke="#1e2d45" stroke-width="8"/>
+            <circle id="ring-ita-circle" cx="40" cy="40" r="32" fill="none" stroke="#8b5cf6" stroke-width="8" stroke-dasharray="201" stroke-dashoffset="201" stroke-linecap="round"/>
+          </svg>
+          <div class="score-text" id="ring-ita-text">–%</div>
+        </div>
+        <div>
+          <div class="kpi-label">Itapeva</div>
+          <div style="font-size:13px;color:#64748b;">Score auditoria</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- More charts -->
+    <div class="chart-grid">
+      <div class="chart-card">
+        <div class="chart-title">Evolução CNQ Mensal (R$)</div>
+        <canvas id="chartCNQMensal"></canvas>
+      </div>
+      <div class="chart-card">
+        <div class="chart-title">Distribuição por Tipo de Custo</div>
+        <canvas id="chartTipoCusto"></canvas>
+      </div>
+    </div>
+  </div>
+
+  <!-- =================== CONFIG =================== -->
+  <div id="page-config" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Configurar Google Sheets</div>
+    </div>
+
+    <div class="gs-info">
+      <strong>🔗 Integração com Google Sheets + Apps Script</strong><br>
+      Configure abaixo a URL do seu Google Apps Script (GAS) para conectar o sistema ao banco de dados em nuvem.
+      Siga os passos para publicar seu Apps Script como Web App.
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">1. URL do Google Apps Script (Web App)</div>
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>GAS Web App URL</label>
+          <input type="url" id="gas-url" placeholder="https://script.google.com/macros/s/SEU_ID/exec" value="">
+        </div>
+        <div class="form-group full">
+          <label>Google Drive Folder ID (para fotos)</label>
+          <input type="text" id="drive-folder" placeholder="1ABC...XYZ (ID da pasta no Drive)">
+        </div>
+      </div>
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+        <button class="btn btn-primary" onclick="saveConfig()">💾 Salvar Configuração</button>
+        <button class="btn btn-secondary" onclick="testConnection()">🔌 Testar Conexão</button>
+        <span id="config-status" style="font-size:13px;padding:10px 0;color:#64748b;"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">2. Código do Google Apps Script (cole no editor GAS)</div>
+      <p style="font-size:13px;color:#64748b;margin-bottom:12px;">
+        Acesse <strong style="color:#00c6ff">script.google.com</strong> → Novo projeto → cole o código abaixo → Publicar como Web App (acesso: Qualquer pessoa).
+      </p>
+      <div class="setup-box">// ============================================================
+// SGQ Mercedes-Benz – Google Apps Script
+// Cole este código em: script.google.com > Novo Projeto
+// ============================================================
+
+const SS_ID = 'SEU_ID_DA_PLANILHA'; // &lt;-- Substitua aqui
+const DRIVE_FOLDER_ID = 'SEU_ID_DA_PASTA_DRIVE'; // &lt;-- Substitua aqui
+
+function doPost(e) {
+  const params = JSON.parse(e.postData.contents);
+  const action = params.action;
+  const ss = SpreadsheetApp.openById(SS_ID);
+  let result;
+
+  if (action === 'saveAQ') result = saveRow(ss, 'AQ', params.data);
+  else if (action === 'saveBrainstorm') result = saveRow(ss, 'Brainstorm', params.data);
+  else if (action === 'saveIshikawa') result = saveRow(ss, 'Ishikawa', params.data);
+  else if (action === 'save5Por') result = saveRow(ss, '5Porques', params.data);
+  else if (action === 'savePlano') result = saveRow(ss, 'PlanoAcao', params.data);
+  else if (action === 'saveAuditoria') result = saveRow(ss, 'Auditorias', params.data);
+  else if (action === 'saveChecklist') result = saveRow(ss, 'Checklist', params.data);
+  else if (action === 'savePOP') result = saveRow(ss, 'POP', params.data);
+  else if (action === 'saveProcesso') result = saveRow(ss, 'Processos', params.data);
+
+  return ContentService.createTextOutput(JSON.stringify(result))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+function doGet(e) {
+  const sheet = e.parameter.sheet;
+  const ss = SpreadsheetApp.openById(SS_ID);
+  const sh = ss.getSheetByName(sheet);
+  if (!sh) return json({data: []});
+
+  const rows = sh.getDataRange().getValues();
+  if (rows.length &lt; 2) return json({data: []});
+
+  const headers = rows[0];
+  const data = rows.slice(1).map(row => {
+    let obj = {};
+    headers.forEach((h, i) => obj[h] = row[i]);
+    return obj;
+  });
+  return json({data});
+}
+
+function saveRow(ss, sheetName, data) {
+  let sh = ss.getSheetByName(sheetName);
+  if (!sh) sh = ss.insertSheet(sheetName);
+  if (sh.getLastRow() === 0) sh.appendRow(Object.keys(data));
+  sh.appendRow(Object.values(data));
+  return {success: true};
+}
+
+function json(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+
+// Estrutura esperada das abas (Google Sheets):
+// AQ: numero, data, unidade, departamento, origem, descricao, foto, custo, tipoCusto, status
+// Brainstorm: aqNumero, causa
+// Ishikawa: aqNumero, categoria, causa
+// 5Porques: aqNumero, nivel, pergunta, resposta
+// PlanoAcao: aqNumero, acao, responsavel, prazo, status
+// Auditorias: data, unidade, area, auditor, total, ok, nok, na, score
+// Checklist: auditoriaId, pergunta, resposta, foto, observacao
+// POP: codigo, processo, versao, responsavel, dataRevisao, conteudo
+// Processos: nome, descricao, etapas
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">3. Estrutura das Planilhas Google Sheets</div>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Aba</th><th>Colunas</th></tr></thead>
+          <tbody>
+            <tr><td><strong style="color:#00c6ff">AQ</strong></td><td>numero, data, unidade, departamento, origem, descricao, foto, custo, tipoCusto, status</td></tr>
+            <tr><td><strong style="color:#00c6ff">Brainstorm</strong></td><td>aqNumero, causa</td></tr>
+            <tr><td><strong style="color:#00c6ff">Ishikawa</strong></td><td>aqNumero, categoria, causa</td></tr>
+            <tr><td><strong style="color:#00c6ff">5Porques</strong></td><td>aqNumero, nivel, pergunta, resposta</td></tr>
+            <tr><td><strong style="color:#00c6ff">PlanoAcao</strong></td><td>aqNumero, acao, responsavel, prazo, status</td></tr>
+            <tr><td><strong style="color:#00c6ff">Auditorias</strong></td><td>data, unidade, area, auditor, total, ok, nok, na, score</td></tr>
+            <tr><td><strong style="color:#00c6ff">Checklist</strong></td><td>auditoriaId, pergunta, resposta, foto, observacao</td></tr>
+            <tr><td><strong style="color:#00c6ff">POP</strong></td><td>codigo, processo, versao, responsavel, dataRevisao, conteudo</td></tr>
+            <tr><td><strong style="color:#00c6ff">Processos</strong></td><td>nome, descricao, etapas</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL: NOVA AQ =================== -->
+<div class="modal-overlay" id="modal-aq">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title" id="modal-aq-title">Nova AQ – Alerta da Qualidade</div>
+      <span class="close-btn" onclick="closeModal('modal-aq')">✕</span>
+    </div>
+    <div class="modal-body">
+      <!-- AQ Tabs -->
+      <div class="tabs" id="aq-tabs">
+        <div class="tab active" onclick="showAQTab('info', this)">📋 Informações</div>
+        <div class="tab" onclick="showAQTab('brainstorm', this)">💡 Brainstorm</div>
+        <div class="tab" onclick="showAQTab('ishikawa', this)">🐟 Ishikawa</div>
+        <div class="tab" onclick="showAQTab('porques', this)">❓ 5 Porquês</div>
+        <div class="tab" onclick="showAQTab('plano', this)">📌 Plano de Ação</div>
+      </div>
+
+      <!-- Tab: Info -->
+      <div id="aq-tab-info" class="fade-in">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Número AQ</label>
+            <input type="text" id="aq-numero" placeholder="AQ-2025-001">
+          </div>
+          <div class="form-group">
+            <label>Data</label>
+            <input type="date" id="aq-data">
+          </div>
+          <div class="form-group">
+            <label>Unidade</label>
+            <select id="aq-unidade">
+              <option value="">Selecione...</option>
+              <option>Sorocaba</option><option>Itu</option><option>Itapeva</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Departamento</label>
+            <select id="aq-depto">
+              <option value="">Selecione...</option>
+              <option>Oficina</option><option>Funilaria</option><option>Pneus</option>
+              <option>Vendas Caminhões</option><option>Vendas Vans</option>
+              <option>Vendas Ônibus</option><option>Predial</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Origem</label>
+            <select id="aq-origem">
+              <option>Cliente</option><option>Interno</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Custo Estimado (R$)</label>
+            <input type="number" id="aq-custo" placeholder="0.00" step="0.01">
+          </div>
+          <div class="form-group">
+            <label>Tipo de Custo</label>
+            <select id="aq-tipo-custo">
+              <option>Retrabalho</option><option>Peça substituída</option>
+              <option>Garantia</option><option>Tempo técnico</option>
+              <option>Desconto cliente</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Status</label>
+            <select id="aq-status">
+              <option>Aberto</option><option>Em Andamento</option><option>Concluído</option>
+            </select>
+          </div>
+          <div class="form-group full">
+            <label>Descrição do Problema</label>
+            <textarea id="aq-descricao" placeholder="Descreva detalhadamente o problema encontrado..."></textarea>
+          </div>
+          <div class="form-group full">
+            <label>Foto do Problema</label>
+            <input type="file" id="aq-foto" accept="image/*" style="padding:8px;">
+            <div id="aq-foto-preview" style="margin-top:8px;"></div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;justify-content:flex-end;">
+          <button class="btn btn-primary" onclick="saveAQInfo()">💾 Salvar Informações</button>
+        </div>
+      </div>
+
+      <!-- Tab: Brainstorm -->
+      <div id="aq-tab-brainstorm" style="display:none;" class="fade-in">
+        <div class="panel-title">💡 Registro de Possíveis Causas</div>
+        <div style="display:flex;gap:10px;margin-bottom:12px;">
+          <input type="text" id="brainstorm-input" placeholder="Digite uma possível causa..." style="flex:1;">
+          <button class="btn btn-primary" onclick="addBrainstorm()">+ Adicionar</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>#</th><th>Causa</th><th>Ação</th></tr></thead>
+            <tbody id="brainstorm-tbody">
+              <tr><td colspan="3" style="text-align:center;color:#475569;padding:20px;">Nenhuma causa adicionada.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Tab: Ishikawa -->
+      <div id="aq-tab-ishikawa" style="display:none;" class="fade-in">
+        <div class="panel-title">🐟 Diagrama de Causa e Efeito</div>
+        <div style="display:flex;gap:10px;margin-bottom:16px;flex-wrap:wrap;">
+          <select id="ishikawa-categoria" style="width:auto;">
+            <option>Método</option><option>Mão de obra</option><option>Máquina</option>
+            <option>Material</option><option>Medição</option><option>Meio ambiente</option>
+          </select>
+          <input type="text" id="ishikawa-causa" placeholder="Causa desta categoria..." style="flex:1;">
+          <button class="btn btn-primary" onclick="addIshikawa()">+ Adicionar</button>
+        </div>
+        <div class="ishikawa-grid" id="ishikawa-grid">
+          <div class="fish-bone"><div class="fish-bone-title">⚙ Método</div><div id="ishi-Método"><p style="font-size:12px;color:#475569">Sem causas.</p></div></div>
+          <div class="fish-bone"><div class="fish-bone-title">👤 Mão de obra</div><div id="ishi-Mão de obra"><p style="font-size:12px;color:#475569">Sem causas.</p></div></div>
+          <div class="fish-bone"><div class="fish-bone-title">🔧 Máquina</div><div id="ishi-Máquina"><p style="font-size:12px;color:#475569">Sem causas.</p></div></div>
+          <div class="fish-bone"><div class="fish-bone-title">📦 Material</div><div id="ishi-Material"><p style="font-size:12px;color:#475569">Sem causas.</p></div></div>
+          <div class="fish-bone"><div class="fish-bone-title">📏 Medição</div><div id="ishi-Medição"><p style="font-size:12px;color:#475569">Sem causas.</p></div></div>
+          <div class="fish-bone"><div class="fish-bone-title">🌿 Meio ambiente</div><div id="ishi-Meio ambiente"><p style="font-size:12px;color:#475569">Sem causas.</p></div></div>
+        </div>
+      </div>
+
+      <!-- Tab: 5 Porquês -->
+      <div id="aq-tab-porques" style="display:none;" class="fade-in">
+        <div class="panel-title">❓ Análise dos 5 Porquês</div>
+        <div id="porques-list">
+          <!-- Generated dynamically -->
+        </div>
+        <button class="btn btn-secondary" onclick="addPorque()" style="margin-top:8px;" id="btn-add-porque">+ Adicionar Nível</button>
+      </div>
+
+      <!-- Tab: Plano de Ação -->
+      <div id="aq-tab-plano" style="display:none;" class="fade-in">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <div class="panel-title" style="margin:0;">📌 Plano de Ação (5W2H)</div>
+          <button class="btn btn-primary btn-sm" onclick="addPlanoAcao()">+ Ação</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Ação</th><th>Responsável</th><th>Prazo</th><th>Status</th><th>Situação</th><th>Del.</th></tr></thead>
+            <tbody id="plano-tbody">
+              <tr><td colspan="6" style="text-align:center;color:#475569;padding:20px;">Nenhuma ação cadastrada.</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL: AUDITORIA =================== -->
+<div class="modal-overlay" id="modal-aud">
+  <div class="modal">
+    <div class="modal-header">
+      <div class="modal-title">Nova Auditoria</div>
+      <span class="close-btn" onclick="closeModal('modal-aud')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="tabs">
+        <div class="tab active" onclick="showAudTab('dados', this)">📋 Dados</div>
+        <div class="tab" onclick="showAudTab('checklist', this)">✅ Checklist</div>
+        <div class="tab" onclick="showAudTab('relatorio', this)">📊 Relatório</div>
+      </div>
+
+      <!-- Dados -->
+      <div id="aud-tab-dados">
+        <div class="form-grid">
+          <div class="form-group">
+            <label>Unidade</label>
+            <select id="aud-unidade">
+              <option>Sorocaba</option><option>Itu</option><option>Itapeva</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Área</label>
+            <input type="text" id="aud-area" placeholder="Ex: Oficina Mecânica">
+          </div>
+          <div class="form-group">
+            <label>Auditor</label>
+            <input type="text" id="aud-auditor" placeholder="Nome do auditor">
+          </div>
+          <div class="form-group">
+            <label>Data</label>
+            <input type="date" id="aud-data">
+          </div>
+        </div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="initChecklist()">▶ Iniciar Checklist</button>
+        </div>
+      </div>
+
+      <!-- Checklist -->
+      <div id="aud-tab-checklist" style="display:none;">
+        <div id="checklist-items"></div>
+        <div style="margin-top:16px;">
+          <button class="btn btn-primary" onclick="calcAuditoria()">📊 Gerar Relatório</button>
+        </div>
+      </div>
+
+      <!-- Relatório -->
+      <div id="aud-tab-relatorio" style="display:none;">
+        <div class="kpi-grid" style="grid-template-columns: repeat(4,1fr);">
+          <div class="kpi-card" style="--accent-color:#00c6ff">
+            <div class="kpi-label">Total</div>
+            <div class="kpi-value" id="rel-total" style="color:#00c6ff">–</div>
+          </div>
+          <div class="kpi-card" style="--accent-color:#10b981">
+            <div class="kpi-label">OK</div>
+            <div class="kpi-value" id="rel-ok" style="color:#34d399">–</div>
+          </div>
+          <div class="kpi-card" style="--accent-color:#ef4444">
+            <div class="kpi-label">NOK</div>
+            <div class="kpi-value" id="rel-nok" style="color:#f87171">–</div>
+          </div>
+          <div class="kpi-card" style="--accent-color:#f59e0b">
+            <div class="kpi-label">Score</div>
+            <div class="kpi-value" id="rel-score" style="color:#fbbf24">–%</div>
+          </div>
+        </div>
+        <div style="margin-top:16px;display:flex;justify-content:flex-end;gap:10px;">
+          <button class="btn btn-primary" onclick="saveAuditoria()">💾 Salvar Auditoria</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL: PROCESSO =================== -->
+<div class="modal-overlay" id="modal-processo">
+  <div class="modal" style="max-width:600px;">
+    <div class="modal-header">
+      <div class="modal-title">Mapeamento de Processo</div>
+      <span class="close-btn" onclick="closeModal('modal-processo')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group full">
+          <label>Nome do Processo</label>
+          <input type="text" id="proc-nome" placeholder="Ex: Recepção do Veículo">
+        </div>
+        <div class="form-group full">
+          <label>Descrição</label>
+          <textarea id="proc-desc" placeholder="Objetivo e escopo do processo..."></textarea>
+        </div>
+        <div class="form-group full">
+          <label>Etapas (uma por linha)</label>
+          <textarea id="proc-etapas" placeholder="1. Receber cliente&#10;2. Abrir OS&#10;3. Inspecionar veículo..." style="min-height:120px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-processo')">Cancelar</button>
+      <button class="btn btn-primary" onclick="saveProcesso()">💾 Salvar Processo</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL: POP =================== -->
+<div class="modal-overlay" id="modal-pop">
+  <div class="modal" style="max-width:700px;">
+    <div class="modal-header">
+      <div class="modal-title" id="pop-modal-title">Novo POP / IT</div>
+      <span class="close-btn" onclick="closeModal('modal-pop')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Código</label>
+          <input type="text" id="pop-codigo" placeholder="POP-OF-001">
+        </div>
+        <div class="form-group">
+          <label>Versão</label>
+          <input type="text" id="pop-versao" placeholder="1.0">
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <input type="text" id="pop-responsavel" placeholder="Nome do responsável">
+        </div>
+        <div class="form-group">
+          <label>Data de Revisão</label>
+          <input type="date" id="pop-data">
+        </div>
+        <div class="form-group full">
+          <label>Nome do Processo</label>
+          <input type="text" id="pop-processo" placeholder="Ex: Troca de Óleo – Padrão">
+        </div>
+        <div class="form-group full">
+          <label>Conteúdo / Procedimento</label>
+          <textarea id="pop-conteudo" placeholder="Descreva o procedimento operacional padrão..." style="min-height:150px;"></textarea>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-pop')">Cancelar</button>
+      <button class="btn btn-primary" onclick="savePOP()">💾 Salvar POP</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ==================== STATE ====================
+const STATE = {
+  gasUrl: localStorage.getItem('sgq_gas_url') || '',
+  driveFolderId: localStorage.getItem('sgq_drive_folder') || '',
+  aqList: JSON.parse(localStorage.getItem('sgq_aq') || '[]'),
+  auditorias: JSON.parse(localStorage.getItem('sgq_auditorias') || '[]'),
+  popList: JSON.parse(localStorage.getItem('sgq_pop') || '[]'),
+  processosList: JSON.parse(localStorage.getItem('sgq_processos') || '[]'),
+  currentAQ: null,
+  brainstormItems: [],
+  ishikawaItems: {},
+  porquesItems: [],
+  planoItems: [],
+  checklistItems: [],
+  charts: {}
+};
+
+// ==================== INIT ====================
+document.addEventListener('DOMContentLoaded', () => {
+  updateClock();
+  setInterval(updateClock, 1000);
+  document.getElementById('gas-url').value = STATE.gasUrl;
+  document.getElementById('drive-folder').value = STATE.driveFolderId;
+  
+  // Set today's date
+  const today = new Date().toISOString().split('T')[0];
+  ['aq-data','aud-data','pop-data'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = today;
+  });
+
+  // Auto-generate AQ number
+  document.getElementById('aq-numero').value = 'AQ-' + new Date().getFullYear() + '-' + String(STATE.aqList.length + 1).padStart(3,'0');
+
+  initPorques();
+  loadDashboard();
+});
+
+function updateClock() {
+  const now = new Date();
+  document.getElementById('topbar-time').textContent = now.toLocaleTimeString('pt-BR');
+  document.getElementById('sidebar-date').textContent = now.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'short'});
+}
+
+// ==================== NAVIGATION ====================
+const PAGE_TITLES = {
+  dashboard: 'Dashboard Executivo',
+  aq: 'Alertas da Qualidade',
+  auditorias: 'Auditorias',
+  processos: 'Mapeamento de Processos',
+  pop: 'Banco de POP / IT',
+  indicadores: 'Indicadores de Qualidade',
+  config: 'Configuração do Sistema'
+};
+
+function showPage(page, el) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('page-' + page).classList.add('active');
+  if (el) el.classList.add('active');
+  document.getElementById('topbar-title').textContent = PAGE_TITLES[page] || page;
+
+  // Close sidebar on mobile
+  if (window.innerWidth < 768) {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-backdrop').classList.remove('show');
+  }
+
+  if (page === 'dashboard') loadDashboard();
+  if (page === 'aq') renderAQTable();
+  if (page === 'auditorias') renderAudTable();
+  if (page === 'pop') renderPOPTable();
+  if (page === 'processos') renderProcessos();
+  if (page === 'indicadores') loadIndicadores();
+}
+
+function toggleSidebar() {
+  const sb = document.getElementById('sidebar');
+  const bd = document.getElementById('sidebar-backdrop');
+  sb.classList.toggle('open');
+  bd.classList.toggle('show');
+}
+
+// ==================== MODALS ====================
+function openModal(id) { document.getElementById(id).classList.add('open'); }
+function closeModal(id) { document.getElementById(id).classList.remove('open'); }
+
+// ==================== DASHBOARD ====================
+function loadDashboard() {
+  const aqList = STATE.aqList;
+  const today = new Date();
+
+  const open = aqList.filter(a => a.status === 'Aberto' || a.status === 'Em Andamento').length;
+  const closed = aqList.filter(a => a.status === 'Concluído').length;
+  const totalCusto = aqList.reduce((s, a) => s + (parseFloat(a.custo) || 0), 0);
+
+  // Count late actions
+  let late = 0;
+  STATE.planoItems && STATE.planoItems.forEach(p => {
+    if (p.prazo && p.status !== 'concluído' && new Date(p.prazo) < today) late++;
+  });
+
+  // From local auditorias plano data - scan all stored
+  const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]');
+  const latePlanos = allPlanos.filter(p => p.status !== 'concluído' && p.prazo && new Date(p.prazo) < today).length;
+
+  document.getElementById('kpi-aq-open').textContent = open;
+  document.getElementById('kpi-aq-closed').textContent = closed;
+  document.getElementById('kpi-reincidencias').textContent = calcReincidencias(aqList);
+  document.getElementById('kpi-atrasadas').textContent = latePlanos;
+  document.getElementById('kpi-tempo').textContent = calcTempoMedio(aqList);
+  document.getElementById('kpi-custo').textContent = 'R$ ' + totalCusto.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+
+  renderCharts(aqList);
+}
+
+function calcReincidencias(list) {
+  const map = {};
+  list.forEach(a => {
+    const key = (a.departamento + '_' + a.descricao.substring(0,30)).toLowerCase();
+    map[key] = (map[key] || 0) + 1;
+  });
+  return Object.values(map).filter(v => v > 1).length;
+}
+
+function calcTempoMedio(list) {
+  const closed = list.filter(a => a.status === 'Concluído' && a.dataFim);
+  if (!closed.length) return '–';
+  const avg = closed.reduce((s, a) => {
+    return s + Math.round((new Date(a.dataFim) - new Date(a.data)) / 86400000);
+  }, 0) / closed.length;
+  return Math.round(avg);
+}
+
+function renderCharts(aqList) {
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const curYear = new Date().getFullYear();
+
+  // Destroy old charts
+  Object.values(STATE.charts).forEach(c => { if (c) c.destroy(); });
+
+  const deptos = ['Oficina','Funilaria','Pneus','Vendas Caminhões','Vendas Vans','Vendas Ônibus','Predial'];
+  const deptoCounts = deptos.map(d => aqList.filter(a => a.departamento === d).length);
+
+  // Pareto - top 5 causas (use departamento as proxy if no brainstorm)
+  const sorted = deptos.map((d,i) => ({d, v: deptoCounts[i]})).sort((a,b) => b.v - a.v).slice(0,5);
+  let cumPct = 0;
+  const paretoData = sorted.map(s => s.v);
+  const paretoTotal = paretoData.reduce((a,b) => a+b, 0) || 1;
+
+  STATE.charts.pareto = new Chart(document.getElementById('chartPareto'), {
+    data: {
+      labels: sorted.map(s => s.d),
+      datasets: [{
+        type: 'bar', label: 'AQ', data: paretoData,
+        backgroundColor: 'rgba(0,198,255,0.7)', borderRadius: 4
+      }, {
+        type: 'line', label: '% Acumulado',
+        data: sorted.map((s,i) => {
+          cumPct += (s.v/paretoTotal)*100; return Math.round(cumPct);
+        }),
+        borderColor: '#f59e0b', pointBackgroundColor: '#f59e0b',
+        tension: 0.4, yAxisID: 'y2'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color: '#94a3b8', font:{size:11} } } },
+      scales: {
+        x: { ticks: { color: '#64748b', font:{size:10} }, grid: { color: '#1e2d45' } },
+        y: { ticks: { color: '#64748b' }, grid: { color: '#1e2d45' } },
+        y2: { position: 'right', ticks: { color: '#f59e0b', callback: v => v+'%' }, grid: { display:false }, max:100 }
+      }
+    }
+  });
+
+  STATE.charts.depto = new Chart(document.getElementById('chartDepto'), {
+    type: 'doughnut',
+    data: {
+      labels: deptos,
+      datasets: [{ data: deptoCounts,
+        backgroundColor: ['#00c6ff','#10b981','#f59e0b','#8b5cf6','#ec4899','#ef4444','#14b8a6'],
+        borderWidth: 2, borderColor: '#1a2236'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { position:'bottom', labels: { color:'#94a3b8', font:{size:10}, padding:8 } } }
+    }
+  });
+
+  // Tendência mensal
+  const monthCounts = Array(12).fill(0);
+  aqList.forEach(a => {
+    if (a.data) {
+      const d = new Date(a.data);
+      if (d.getFullYear() === curYear) monthCounts[d.getMonth()]++;
+    }
+  });
+  STATE.charts.trend = new Chart(document.getElementById('chartTrend'), {
+    type: 'line',
+    data: {
+      labels: months,
+      datasets: [{ label: 'AQ', data: monthCounts,
+        borderColor: '#00c6ff', backgroundColor: 'rgba(0,198,255,0.08)',
+        fill: true, tension: 0.4, pointBackgroundColor: '#00c6ff', pointRadius: 4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels: { color:'#94a3b8', font:{size:11} } } },
+      scales: {
+        x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
+        y: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'}, beginAtZero:true }
+      }
+    }
+  });
+
+  // Score por unidade
+  const unidades = ['Sorocaba','Itu','Itapeva'];
+  const scores = unidades.map(u => {
+    const auds = STATE.auditorias.filter(a => a.unidade === u);
+    if (!auds.length) return 0;
+    return Math.round(auds.reduce((s,a) => s+(parseFloat(a.score)||0), 0) / auds.length);
+  });
+  STATE.charts.score = new Chart(document.getElementById('chartScore'), {
+    type: 'bar',
+    data: {
+      labels: unidades,
+      datasets: [{ label: 'Score %', data: scores,
+        backgroundColor: ['rgba(0,198,255,0.7)','rgba(16,185,129,0.7)','rgba(139,92,246,0.7)'],
+        borderRadius: 6
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend: { labels:{color:'#94a3b8', font:{size:11}} } },
+      scales: {
+        x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
+        y: { ticks:{color:'#64748b', callback:v=>v+'%'}, grid:{color:'#1e2d45'}, max:100, beginAtZero:true }
+      }
+    }
+  });
+
+  // CNQ por depto
+  const deptoCusto = deptos.map(d => aqList.filter(a=>a.departamento===d).reduce((s,a)=>s+(parseFloat(a.custo)||0),0));
+  STATE.charts.cnq = new Chart(document.getElementById('chartCNQ'), {
+    type: 'bar',
+    data: {
+      labels: deptos,
+      datasets: [{ label: 'R$', data: deptoCusto,
+        backgroundColor: 'rgba(236,72,153,0.7)', borderRadius:4
+      }]
+    },
+    options: {
+      indexAxis: 'y', responsive: true, maintainAspectRatio: true,
+      plugins: { legend:{ labels:{color:'#94a3b8', font:{size:11}} } },
+      scales: {
+        x: { ticks:{color:'#64748b', callback:v=>'R$ '+v.toLocaleString('pt-BR')}, grid:{color:'#1e2d45'}, beginAtZero:true },
+        y: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} }
+      }
+    }
+  });
+}
+
+// ==================== AQ ====================
+function openAQModal(aq) {
+  STATE.brainstormItems = [];
+  STATE.ishikawaItems = {};
+  STATE.porquesItems = [];
+  STATE.planoItems = [];
+  STATE.currentAQ = aq || null;
+
+  if (aq) {
+    document.getElementById('modal-aq-title').textContent = 'AQ #' + aq.numero;
+    document.getElementById('aq-numero').value = aq.numero;
+    document.getElementById('aq-data').value = aq.data;
+    document.getElementById('aq-unidade').value = aq.unidade;
+    document.getElementById('aq-depto').value = aq.departamento;
+    document.getElementById('aq-origem').value = aq.origem;
+    document.getElementById('aq-custo').value = aq.custo;
+    document.getElementById('aq-tipo-custo').value = aq.tipoCusto;
+    document.getElementById('aq-status').value = aq.status;
+    document.getElementById('aq-descricao').value = aq.descricao;
+
+    // Load associated data
+    const stored = JSON.parse(localStorage.getItem('sgq_aq_data_' + aq.numero) || '{}');
+    STATE.brainstormItems = stored.brainstorm || [];
+    STATE.ishikawaItems = stored.ishikawa || {};
+    STATE.porquesItems = stored.porques || [];
+    STATE.planoItems = stored.plano || [];
+  } else {
+    document.getElementById('modal-aq-title').textContent = 'Nova AQ – Alerta da Qualidade';
+    document.getElementById('aq-numero').value = 'AQ-' + new Date().getFullYear() + '-' + String(STATE.aqList.length + 1).padStart(3,'0');
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('aq-data').value = today;
+  }
+
+  renderBrainstorm(); renderIshikawa(); renderPorques(); renderPlano();
+  showAQTab('info', document.querySelector('#aq-tabs .tab'));
+  openModal('modal-aq');
+}
+
+function showAQTab(tab, el) {
+  ['info','brainstorm','ishikawa','porques','plano'].forEach(t => {
+    document.getElementById('aq-tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#aq-tabs .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+}
+
+function saveAQInfo() {
+  const aq = {
+    numero: document.getElementById('aq-numero').value,
+    data: document.getElementById('aq-data').value,
+    unidade: document.getElementById('aq-unidade').value,
+    departamento: document.getElementById('aq-depto').value,
+    origem: document.getElementById('aq-origem').value,
+    descricao: document.getElementById('aq-descricao').value,
+    custo: document.getElementById('aq-custo').value,
+    tipoCusto: document.getElementById('aq-tipo-custo').value,
+    status: document.getElementById('aq-status').value,
+    foto: ''
+  };
+
+  if (!aq.numero || !aq.unidade || !aq.departamento) {
+    alert('Preencha Número, Unidade e Departamento.'); return;
+  }
+
+  const idx = STATE.aqList.findIndex(a => a.numero === aq.numero);
+  if (idx >= 0) STATE.aqList[idx] = aq;
+  else STATE.aqList.push(aq);
+
+  localStorage.setItem('sgq_aq', JSON.stringify(STATE.aqList));
+  STATE.currentAQ = aq;
+  saveSubData(aq.numero);
+
+  // Sync to GAS if configured
+  if (STATE.gasUrl) gasPost('saveAQ', aq);
+
+  showToast('AQ salva com sucesso!');
+  renderAQTable();
+}
+
+function saveSubData(numero) {
+  if (!numero) return;
+  const data = {
+    brainstorm: STATE.brainstormItems,
+    ishikawa: STATE.ishikawaItems,
+    porques: STATE.porquesItems,
+    plano: STATE.planoItems
+  };
+  localStorage.setItem('sgq_aq_data_' + numero, JSON.stringify(data));
+  // Save planos globally for dashboard late count
+  const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]').filter(p => p.aqNumero !== numero);
+  STATE.planoItems.forEach(p => allPlanos.push({...p, aqNumero: numero}));
+  localStorage.setItem('sgq_planos', JSON.stringify(allPlanos));
+}
+
+function deleteAQ(numero) {
+  if (!confirm('Excluir AQ ' + numero + '?')) return;
+  STATE.aqList = STATE.aqList.filter(a => a.numero !== numero);
+  localStorage.setItem('sgq_aq', JSON.stringify(STATE.aqList));
+  renderAQTable();
+}
+
+function filterAQTable() {
+  const u = document.getElementById('filter-unidade').value;
+  const d = document.getElementById('filter-depto').value;
+  const s = document.getElementById('filter-status').value;
+  renderAQTable(u, d, s);
+}
+
+function renderAQTable(filterU='', filterD='', filterS='') {
+  let list = STATE.aqList;
+  if (filterU) list = list.filter(a => a.unidade === filterU);
+  if (filterD) list = list.filter(a => a.departamento === filterD);
+  if (filterS) list = list.filter(a => a.status === filterS);
+
+  const tbody = document.getElementById('aq-tbody');
+  if (!list.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#475569;padding:32px;">Nenhum registro encontrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = list.map(aq => `
+    <tr>
+      <td><strong style="color:#00c6ff">${aq.numero}</strong></td>
+      <td>${formatDate(aq.data)}</td>
+      <td>${aq.unidade}</td>
+      <td>${aq.departamento}</td>
+      <td><span class="badge ${aq.origem==='Cliente'?'badge-open':'badge-na'}">${aq.origem}</span></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${aq.descricao}</td>
+      <td>R$ ${parseFloat(aq.custo||0).toLocaleString('pt-BR',{minimumFractionDigits:2})}</td>
+      <td>${statusBadge(aq.status)}</td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="openAQModal(STATE.aqList.find(a=>a.numero==='${aq.numero}'))">✏</button>
+          <button class="btn btn-danger btn-sm" onclick="deleteAQ('${aq.numero}')">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+// ==================== BRAINSTORM ====================
+function addBrainstorm() {
+  const val = document.getElementById('brainstorm-input').value.trim();
+  if (!val) return;
+  STATE.brainstormItems.push(val);
+  document.getElementById('brainstorm-input').value = '';
+  renderBrainstorm();
+  const num = STATE.currentAQ?.numero;
+  if (num) { saveSubData(num); if (STATE.gasUrl) gasPost('saveBrainstorm', {aqNumero:num, causa:val}); }
+}
+
+function renderBrainstorm() {
+  const tbody = document.getElementById('brainstorm-tbody');
+  if (!STATE.brainstormItems.length) {
+    tbody.innerHTML = '<tr><td colspan="3" style="text-align:center;color:#475569;padding:20px;">Nenhuma causa adicionada.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = STATE.brainstormItems.map((c,i) => `
+    <tr>
+      <td>${i+1}</td>
+      <td>${c}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="STATE.brainstormItems.splice(${i},1);renderBrainstorm()">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+// ==================== ISHIKAWA ====================
+function addIshikawa() {
+  const cat = document.getElementById('ishikawa-categoria').value;
+  const causa = document.getElementById('ishikawa-causa').value.trim();
+  if (!causa) return;
+  if (!STATE.ishikawaItems[cat]) STATE.ishikawaItems[cat] = [];
+  STATE.ishikawaItems[cat].push(causa);
+  document.getElementById('ishikawa-causa').value = '';
+  renderIshikawa();
+  const num = STATE.currentAQ?.numero;
+  if (num) { saveSubData(num); if (STATE.gasUrl) gasPost('saveIshikawa', {aqNumero:num, categoria:cat, causa}); }
+}
+
+function renderIshikawa() {
+  const cats = ['Método','Mão de obra','Máquina','Material','Medição','Meio ambiente'];
+  cats.forEach(cat => {
+    const el = document.getElementById('ishi-' + cat);
+    if (!el) return;
+    const items = STATE.ishikawaItems[cat] || [];
+    if (!items.length) { el.innerHTML = '<p style="font-size:12px;color:#475569">Sem causas.</p>'; return; }
+    el.innerHTML = items.map((c,i) => `
+      <div class="fish-cause">
+        <span style="color:#00c6ff;font-size:10px">→</span>
+        <span style="flex:1">${c}</span>
+        <button onclick="STATE.ishikawaItems['${cat}'].splice(${i},1);renderIshikawa()" style="background:none;border:none;color:#ef4444;cursor:pointer;font-size:12px;">✕</button>
+      </div>
+    `).join('');
+  });
+}
+
+// ==================== 5 PORQUÊS ====================
+function initPorques() {
+  if (!STATE.porquesItems.length) {
+    STATE.porquesItems = [{ nivel: 1, pergunta: 'Por que o problema ocorreu?', resposta: '' }];
+  }
+  renderPorques();
+}
+
+function addPorque() {
+  if (STATE.porquesItems.length >= 5) return;
+  const n = STATE.porquesItems.length + 1;
+  STATE.porquesItems.push({ nivel: n, pergunta: `Por que (nível ${n})?`, resposta: '' });
+  renderPorques();
+  if (STATE.porquesItems.length >= 5) document.getElementById('btn-add-porque').style.display = 'none';
+}
+
+function renderPorques() {
+  document.getElementById('porques-list').innerHTML = STATE.porquesItems.map((p, i) => `
+    <div class="panel" style="padding:16px;margin-bottom:10px;">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+        <div style="width:28px;height:28px;border-radius:50%;background:rgba(0,198,255,0.15);border:1px solid rgba(0,198,255,0.3);display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px;color:#00c6ff;flex-shrink:0;">${p.nivel}</div>
+        <input type="text" value="${p.pergunta}" onchange="STATE.porquesItems[${i}].pergunta=this.value" style="flex:1;font-weight:600;" placeholder="Pergunta...">
+      </div>
+      <textarea placeholder="Resposta..." onchange="STATE.porquesItems[${i}].resposta=this.value" style="min-height:60px;">${p.resposta}</textarea>
+    </div>
+  `).join('');
+}
+
+// ==================== PLANO DE AÇÃO ====================
+function addPlanoAcao() {
+  STATE.planoItems.push({ acao: '', responsavel: '', prazo: '', status: 'aberto' });
+  renderPlano();
+}
+
+function renderPlano() {
+  const tbody = document.getElementById('plano-tbody');
+  if (!STATE.planoItems.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:20px;">Nenhuma ação cadastrada.</td></tr>';
+    return;
+  }
+  const today = new Date();
+  tbody.innerHTML = STATE.planoItems.map((p, i) => {
+    const isLate = p.prazo && p.status !== 'concluído' && new Date(p.prazo) < today;
+    return `
+    <tr>
+      <td><input type="text" value="${p.acao}" onchange="STATE.planoItems[${i}].acao=this.value" placeholder="Descreva a ação..." style="min-width:180px;"></td>
+      <td><input type="text" value="${p.responsavel}" onchange="STATE.planoItems[${i}].responsavel=this.value" placeholder="Responsável" style="min-width:120px;"></td>
+      <td><input type="date" value="${p.prazo}" onchange="STATE.planoItems[${i}].prazo=this.value;renderPlano()"></td>
+      <td>
+        <select onchange="STATE.planoItems[${i}].status=this.value;renderPlano()">
+          <option value="aberto" ${p.status==='aberto'?'selected':''}>Aberto</option>
+          <option value="em andamento" ${p.status==='em andamento'?'selected':''}>Em Andamento</option>
+          <option value="concluído" ${p.status==='concluído'?'selected':''}>Concluído</option>
+        </select>
+      </td>
+      <td>${isLate ? '<span class="badge badge-late">⚠ Atrasada</span>' : statusBadge2(p.status)}</td>
+      <td><button class="btn btn-danger btn-sm" onclick="STATE.planoItems.splice(${i},1);renderPlano()">✕</button></td>
+    </tr>`;
+  }).join('');
+}
+
+// ==================== AUDITORIAS ====================
+const CHECKLIST_BASE = [
+  'Os processos críticos estão documentados?',
+  'Os colaboradores conhecem os procedimentos operacionais?',
+  'As ferramentas e equipamentos estão calibrados?',
+  'Há registros de não conformidades anteriores tratadas?',
+  'O ambiente de trabalho atende às normas de segurança?',
+  'Os indicadores de qualidade estão sendo monitorados?',
+  'Os treinamentos estão em dia?',
+  'Os POPs estão atualizados e disponíveis?',
+  'As ações do plano de melhoria foram executadas?',
+  'O feedback de clientes está sendo coletado?',
+];
+
+function openAudModal() {
+  STATE.checklistItems = CHECKLIST_BASE.map(q => ({ pergunta: q, resposta: '', obs: '' }));
+  document.getElementById('aud-data').value = new Date().toISOString().split('T')[0];
+  showAudTab('dados', null);
+  openModal('modal-aud');
+}
+
+function showAudTab(tab, el) {
+  ['dados','checklist','relatorio'].forEach(t => {
+    document.getElementById('aud-tab-' + t).style.display = t === tab ? 'block' : 'none';
+  });
+  document.querySelectorAll('#modal-aud .tab').forEach(t => t.classList.remove('active'));
+  if (el) el.classList.add('active');
+  else {
+    const tabs = document.querySelectorAll('#modal-aud .tab');
+    const idx = ['dados','checklist','relatorio'].indexOf(tab);
+    if (tabs[idx]) tabs[idx].classList.add('active');
+  }
+}
+
+function initChecklist() {
+  const unidade = document.getElementById('aud-unidade').value;
+  const area = document.getElementById('aud-area').value;
+  if (!area) { alert('Informe a área.'); return; }
+
+  const container = document.getElementById('checklist-items');
+  container.innerHTML = STATE.checklistItems.map((item, i) => `
+    <div class="panel" style="padding:16px;margin-bottom:10px;">
+      <div style="font-size:13px;font-weight:600;margin-bottom:10px;">${i+1}. ${item.pergunta}</div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;">
+        <button class="btn btn-sm" id="resp-ok-${i}" onclick="setResp(${i},'OK')" style="background:rgba(16,185,129,0.15);color:#34d399;border:1px solid rgba(16,185,129,0.3);">✓ OK</button>
+        <button class="btn btn-sm" id="resp-nok-${i}" onclick="setResp(${i},'NOK')" style="background:rgba(239,68,68,0.15);color:#f87171;border:1px solid rgba(239,68,68,0.3);">✗ NOK</button>
+        <button class="btn btn-sm" id="resp-na-${i}" onclick="setResp(${i},'N/A')" style="background:rgba(100,116,139,0.15);color:#94a3b8;border:1px solid rgba(100,116,139,0.25);">N/A</button>
+      </div>
+      <input type="text" placeholder="Observação (opcional)..." onchange="STATE.checklistItems[${i}].obs=this.value" style="margin-top:8px;font-size:12px;">
+    </div>
+  `).join('');
+  showAudTab('checklist', null);
+}
+
+function setResp(i, val) {
+  STATE.checklistItems[i].resposta = val;
+  ['OK','NOK','N/A'].forEach(r => {
+    const btn = document.getElementById('resp-' + r.toLowerCase().replace('/','') + '-' + i);
+    if (!btn) return;
+    const active = r === val;
+    btn.style.opacity = active ? '1' : '0.4';
+    btn.style.transform = active ? 'scale(1.05)' : '';
+  });
+}
+
+function calcAuditoria() {
+  const total = STATE.checklistItems.length;
+  const ok = STATE.checklistItems.filter(c => c.resposta === 'OK').length;
+  const nok = STATE.checklistItems.filter(c => c.resposta === 'NOK').length;
+  const na = STATE.checklistItems.filter(c => c.resposta === 'N/A').length;
+  const valid = total - na;
+  const score = valid > 0 ? Math.round((ok / valid) * 100) : 0;
+
+  document.getElementById('rel-total').textContent = total;
+  document.getElementById('rel-ok').textContent = ok;
+  document.getElementById('rel-nok').textContent = nok;
+  document.getElementById('rel-score').textContent = score + '%';
+
+  window._audScore = { total, ok, nok, na, score };
+  showAudTab('relatorio', null);
+}
+
+function saveAuditoria() {
+  const s = window._audScore || { total:0, ok:0, nok:0, na:0, score:0 };
+  const aud = {
+    data: document.getElementById('aud-data').value,
+    unidade: document.getElementById('aud-unidade').value,
+    area: document.getElementById('aud-area').value,
+    auditor: document.getElementById('aud-auditor').value,
+    ...s
+  };
+  STATE.auditorias.push(aud);
+  localStorage.setItem('sgq_auditorias', JSON.stringify(STATE.auditorias));
+  if (STATE.gasUrl) gasPost('saveAuditoria', aud);
+  closeModal('modal-aud');
+  renderAudTable();
+  showToast('Auditoria salva!');
+}
+
+function renderAudTable() {
+  const tbody = document.getElementById('aud-tbody');
+  if (!STATE.auditorias.length) {
+    tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#475569;padding:32px;">Nenhuma auditoria registrada.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = STATE.auditorias.map((a, i) => `
+    <tr>
+      <td>${formatDate(a.data)}</td>
+      <td>${a.unidade}</td>
+      <td>${a.area}</td>
+      <td>${a.auditor}</td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <div style="width:40px;height:6px;background:#1e2d45;border-radius:3px;overflow:hidden;">
+            <div style="width:${a.score}%;height:100%;background:${a.score>=80?'#10b981':a.score>=60?'#f59e0b':'#ef4444'};border-radius:3px;"></div>
+          </div>
+          <strong style="color:${a.score>=80?'#34d399':a.score>=60?'#fbbf24':'#f87171'}">${a.score}%</strong>
+        </div>
+      </td>
+      <td><span class="badge badge-done">${a.ok}</span></td>
+      <td><span class="badge badge-open">${a.nok}</span></td>
+      <td><span class="badge badge-na">${a.na}</span></td>
+      <td><button class="btn btn-danger btn-sm" onclick="STATE.auditorias.splice(${i},1);localStorage.setItem('sgq_auditorias',JSON.stringify(STATE.auditorias));renderAudTable()">✕</button></td>
+    </tr>
+  `).join('');
+}
+
+// ==================== PROCESSOS ====================
+function openProcessoModal() { openModal('modal-processo'); }
+
+function saveProcesso() {
+  const p = {
+    nome: document.getElementById('proc-nome').value,
+    descricao: document.getElementById('proc-desc').value,
+    etapas: document.getElementById('proc-etapas').value
+  };
+  if (!p.nome) { alert('Informe o nome do processo.'); return; }
+  STATE.processosList.push(p);
+  localStorage.setItem('sgq_processos', JSON.stringify(STATE.processosList));
+  if (STATE.gasUrl) gasPost('saveProcesso', p);
+  closeModal('modal-processo');
+  renderProcessos();
+  document.getElementById('proc-nome').value = '';
+  document.getElementById('proc-desc').value = '';
+  document.getElementById('proc-etapas').value = '';
+  showToast('Processo salvo!');
+}
+
+function renderProcessos() {
+  const container = document.getElementById('processos-list');
+  if (!STATE.processosList.length) {
+    container.innerHTML = '<div style="grid-column:1/-1;text-align:center;padding:40px;color:#475569;">Nenhum processo cadastrado.</div>';
+    return;
+  }
+  container.innerHTML = STATE.processosList.map((p, i) => {
+    const etapas = p.etapas.split('\n').filter(e => e.trim());
+    return `
+    <div class="chart-card">
+      <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:12px;">
+        <div>
+          <div style="font-weight:700;font-size:15px;color:#e2e8f0;">${p.nome}</div>
+          <div style="font-size:12px;color:#64748b;margin-top:4px;">${p.descricao}</div>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="STATE.processosList.splice(${i},1);localStorage.setItem('sgq_processos',JSON.stringify(STATE.processosList));renderProcessos()">✕</button>
+      </div>
+      <div style="display:flex;flex-direction:column;gap:6px;">
+        ${etapas.map((e, j) => `
+          <div style="display:flex;align-items:center;gap:8px;">
+            <div style="width:22px;height:22px;border-radius:50%;background:rgba(0,198,255,0.15);border:1px solid rgba(0,198,255,0.3);display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700;color:#00c6ff;flex-shrink:0;">${j+1}</div>
+            <div style="font-size:13px;">${e}</div>
+            ${j < etapas.length-1 ? '' : ''}
+          </div>
+          ${j < etapas.length-1 ? '<div style="width:1px;height:8px;background:#1e2d45;margin-left:11px;"></div>' : ''}
+        `).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+// ==================== POP ====================
+function openPOPModal(pop, idx) {
+  if (pop) {
+    document.getElementById('pop-modal-title').textContent = 'Editar POP';
+    document.getElementById('pop-codigo').value = pop.codigo;
+    document.getElementById('pop-versao').value = pop.versao;
+    document.getElementById('pop-responsavel').value = pop.responsavel;
+    document.getElementById('pop-data').value = pop.dataRevisao;
+    document.getElementById('pop-processo').value = pop.processo;
+    document.getElementById('pop-conteudo').value = pop.conteudo;
+    window._editPOPIdx = idx;
+  } else {
+    document.getElementById('pop-modal-title').textContent = 'Novo POP / IT';
+    ['pop-codigo','pop-versao','pop-responsavel','pop-processo','pop-conteudo'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('pop-data').value = new Date().toISOString().split('T')[0];
+    window._editPOPIdx = null;
+  }
+  openModal('modal-pop');
+}
+
+function savePOP() {
+  const p = {
+    codigo: document.getElementById('pop-codigo').value,
+    processo: document.getElementById('pop-processo').value,
+    versao: document.getElementById('pop-versao').value,
+    responsavel: document.getElementById('pop-responsavel').value,
+    dataRevisao: document.getElementById('pop-data').value,
+    conteudo: document.getElementById('pop-conteudo').value
+  };
+  if (!p.codigo || !p.processo) { alert('Preencha Código e Processo.'); return; }
+  if (window._editPOPIdx !== null && window._editPOPIdx !== undefined) {
+    STATE.popList[window._editPOPIdx] = p;
+  } else {
+    STATE.popList.push(p);
+  }
+  localStorage.setItem('sgq_pop', JSON.stringify(STATE.popList));
+  if (STATE.gasUrl) gasPost('savePOP', p);
+  closeModal('modal-pop');
+  renderPOPTable();
+  showToast('POP salvo!');
+}
+
+function renderPOPTable() {
+  const tbody = document.getElementById('pop-tbody');
+  if (!STATE.popList.length) {
+    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:32px;">Nenhum POP cadastrado.</td></tr>';
+    return;
+  }
+  tbody.innerHTML = STATE.popList.map((p, i) => `
+    <tr>
+      <td><strong style="color:#00c6ff">${p.codigo}</strong></td>
+      <td>${p.processo}</td>
+      <td><span class="badge badge-na">v${p.versao}</span></td>
+      <td>${p.responsavel}</td>
+      <td>${formatDate(p.dataRevisao)}</td>
+      <td>
+        <div style="display:flex;gap:6px;">
+          <button class="btn btn-secondary btn-sm" onclick="openPOPModal(STATE.popList[${i}], ${i})">✏ Editar</button>
+          <button class="btn btn-secondary btn-sm" onclick="newVersionPOP(${i})">⊕ Nova versão</button>
+          <button class="btn btn-danger btn-sm" onclick="STATE.popList.splice(${i},1);localStorage.setItem('sgq_pop',JSON.stringify(STATE.popList));renderPOPTable()">✕</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+}
+
+function newVersionPOP(idx) {
+  const pop = {...STATE.popList[idx]};
+  pop.versao = String(parseFloat(pop.versao) + 1.0);
+  pop.dataRevisao = new Date().toISOString().split('T')[0];
+  STATE.popList.push(pop);
+  localStorage.setItem('sgq_pop', JSON.stringify(STATE.popList));
+  renderPOPTable();
+  showToast('Nova versão criada: v' + pop.versao);
+}
+
+// ==================== INDICADORES ====================
+function loadIndicadores() {
+  const unidades = ['Sorocaba','Itu','Itapeva'];
+  const colors = ['#00c6ff','#10b981','#8b5cf6'];
+  const rings = ['sor','itu','ita'];
+  const circum = 2 * Math.PI * 32; // 201.06
+
+  unidades.forEach((u, i) => {
+    const auds = STATE.auditorias.filter(a => a.unidade === u);
+    const score = auds.length ? Math.round(auds.reduce((s,a) => s+(parseFloat(a.score)||0),0)/auds.length) : 0;
+    document.getElementById('ring-' + rings[i] + '-text').textContent = score + '%';
+    const offset = circum - (score / 100) * circum;
+    document.getElementById('ring-' + rings[i] + '-circle').style.strokeDashoffset = offset;
+  });
+
+  // CNQ Mensal
+  const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+  const curYear = new Date().getFullYear();
+  const monthCusto = Array(12).fill(0);
+  STATE.aqList.forEach(a => {
+    if (a.data) {
+      const d = new Date(a.data);
+      if (d.getFullYear() === curYear) monthCusto[d.getMonth()] += parseFloat(a.custo||0);
+    }
+  });
+
+  if (STATE.charts.cnqMensal) STATE.charts.cnqMensal.destroy();
+  STATE.charts.cnqMensal = new Chart(document.getElementById('chartCNQMensal'), {
+    type: 'bar',
+    data: {
+      labels: months,
+      datasets: [{ label: 'CNQ R$', data: monthCusto,
+        backgroundColor: 'rgba(236,72,153,0.7)', borderRadius:4
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend:{ labels:{color:'#94a3b8',font:{size:11}} } },
+      scales: {
+        x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
+        y: { ticks:{color:'#64748b', callback:v=>'R$'+v.toLocaleString('pt-BR')}, grid:{color:'#1e2d45'}, beginAtZero:true }
+      }
+    }
+  });
+
+  // Tipo de custo
+  const tipos = ['Retrabalho','Peça substituída','Garantia','Tempo técnico','Desconto cliente'];
+  const tipoCustoData = tipos.map(t => STATE.aqList.filter(a=>a.tipoCusto===t).reduce((s,a)=>s+(parseFloat(a.custo)||0),0));
+  if (STATE.charts.tipoCusto) STATE.charts.tipoCusto.destroy();
+  STATE.charts.tipoCusto = new Chart(document.getElementById('chartTipoCusto'), {
+    type: 'pie',
+    data: {
+      labels: tipos,
+      datasets: [{ data: tipoCustoData,
+        backgroundColor: ['#00c6ff','#10b981','#f59e0b','#8b5cf6','#ec4899'],
+        borderWidth:2, borderColor:'#1a2236'
+      }]
+    },
+    options: {
+      responsive: true, maintainAspectRatio: true,
+      plugins: { legend:{ position:'bottom', labels:{color:'#94a3b8', font:{size:10}, padding:8} } }
+    }
+  });
+}
+
+// ==================== CONFIG ====================
+function saveConfig() {
+  STATE.gasUrl = document.getElementById('gas-url').value.trim();
+  STATE.driveFolderId = document.getElementById('drive-folder').value.trim();
+  localStorage.setItem('sgq_gas_url', STATE.gasUrl);
+  localStorage.setItem('sgq_drive_folder', STATE.driveFolderId);
+  document.getElementById('config-status').textContent = '✓ Configuração salva!';
+  document.getElementById('config-status').style.color = '#34d399';
+  setTimeout(() => document.getElementById('config-status').textContent = '', 3000);
+}
+
+async function testConnection() {
+  const url = document.getElementById('gas-url').value.trim();
+  if (!url) { alert('Informe a URL do GAS primeiro.'); return; }
+  document.getElementById('config-status').textContent = '🔌 Testando...';
+  document.getElementById('config-status').style.color = '#94a3b8';
+  try {
+    const res = await fetch(url + '?sheet=AQ');
+    const data = await res.json();
+    document.getElementById('config-status').textContent = '✓ Conexão OK! Registros: ' + (data.data?.length || 0);
+    document.getElementById('config-status').style.color = '#34d399';
+  } catch(e) {
+    document.getElementById('config-status').textContent = '✗ Erro: ' + e.message;
+    document.getElementById('config-status').style.color = '#f87171';
+  }
+}
+
+async function gasPost(action, data) {
+  if (!STATE.gasUrl) return;
+  try {
+    await fetch(STATE.gasUrl, {
+      method: 'POST',
+      body: JSON.stringify({ action, data }),
+      headers: { 'Content-Type': 'application/json' }
+    });
+  } catch(e) {
+    console.warn('GAS sync error:', e);
+  }
+}
+
+// ==================== UTILS ====================
+function statusBadge(s) {
+  if (s === 'Aberto') return '<span class="badge badge-open">Aberto</span>';
+  if (s === 'Em Andamento') return '<span class="badge badge-progress">Em Andamento</span>';
+  if (s === 'Concluído') return '<span class="badge badge-done">Concluído</span>';
+  return '<span class="badge badge-na">' + s + '</span>';
+}
+
+function statusBadge2(s) {
+  if (s === 'aberto') return '<span class="badge badge-open">Aberto</span>';
+  if (s === 'em andamento') return '<span class="badge badge-progress">Em Andamento</span>';
+  if (s === 'concluído') return '<span class="badge badge-done">Concluído</span>';
+  return '';
+}
+
+function formatDate(d) {
+  if (!d) return '–';
+  try {
+    const parts = d.split('-');
+    return parts[2] + '/' + parts[1] + '/' + parts[0];
+  } catch { return d; }
+}
+
+function showToast(msg) {
+  const t = document.createElement('div');
+  t.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#10b981;color:#fff;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;z-index:999;animation:slideUp 0.3s ease;box-shadow:0 4px 20px rgba(16,185,129,0.3);';
+  t.textContent = '✓ ' + msg;
+  document.body.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// Photo preview
+document.getElementById('aq-foto').addEventListener('change', function() {
+  const file = this.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    document.getElementById('aq-foto-preview').innerHTML = `<img src="${e.target.result}" style="max-width:200px;max-height:150px;border-radius:8px;border:1px solid #1e2d45;">`;
+  };
+  reader.readAsDataURL(file);
+});
+
+// Sample data for demo
+function loadSampleData() {
+  if (STATE.aqList.length > 0) return;
+  const deptos = ['Oficina','Funilaria','Pneus','Vendas Caminhões'];
+  const unidades = ['Sorocaba','Itu','Itapeva'];
+  const tipos = ['Retrabalho','Garantia','Tempo técnico'];
+  const status = ['Aberto','Em Andamento','Concluído'];
+  for (let i = 1; i <= 8; i++) {
+    STATE.aqList.push({
+      numero: 'AQ-2025-' + String(i).padStart(3,'0'),
+      data: '2025-' + String(Math.floor(Math.random()*6)+1).padStart(2,'0') + '-' + String(Math.floor(Math.random()*28)+1).padStart(2,'0'),
+      unidade: unidades[i%3],
+      departamento: deptos[i%4],
+      origem: i%3===0?'Cliente':'Interno',
+      descricao: 'Problema identificado na área de ' + deptos[i%4] + ' - não conformidade registrada.',
+      custo: String(Math.floor(Math.random()*5000)+500),
+      tipoCusto: tipos[i%3],
+      status: status[i%3]
+    });
+  }
+  localStorage.setItem('sgq_aq', JSON.stringify(STATE.aqList));
+
+  // Sample auditorias
+  unidades.forEach(u => {
+    STATE.auditorias.push({ data:'2025-03-01', unidade:u, area:'Qualidade', auditor:'Auditor SGQ', total:10, ok:Math.floor(Math.random()*3)+6, nok:Math.floor(Math.random()*3), na:1, score:Math.floor(Math.random()*25)+70 });
+  });
+  localStorage.setItem('sgq_auditorias', JSON.stringify(STATE.auditorias));
+}
+
+loadSampleData();
+</script>
+</body>
+</html>
