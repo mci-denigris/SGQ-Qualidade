@@ -1294,7 +1294,7 @@ const STATE = {
 };
 
 // ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
   updateClock();
   setInterval(updateClock, 1000);
   document.getElementById('gas-url').value = STATE.gasUrl;
@@ -1307,13 +1307,53 @@ document.addEventListener('DOMContentLoaded', () => {
     if (el) el.value = today;
   });
 
+  initPorques();
+  popularSelectTipos();
+
+  // Se tiver URL do GAS configurada, carrega dados da planilha ao abrir
+  if (STATE.gasUrl) {
+    await syncFromGAS();
+  }
+
   // Auto-generate AQ number
   document.getElementById('aq-numero').value = 'AQ-' + new Date().getFullYear() + '-' + String(STATE.aqList.length + 1).padStart(3,'0');
 
-  initPorques();
-  popularSelectTipos();
   loadDashboard();
 });
+
+// Carrega dados do GAS para o localStorage e STATE
+async function syncFromGAS() {
+  try {
+    const res = await fetch(STATE.gasUrl + '?action=ping');
+    const json = await res.json();
+    if (!json.pong && !json.success && !json.data) return;
+
+    const res2 = await fetch(STATE.gasUrl);
+    const data = await res2.json();
+    if (!data.success || !data.data) return;
+
+    const d = data.data;
+    if (d.AQ && d.AQ.length > 0) {
+      STATE.aqList = d.AQ;
+      localStorage.setItem('sgq_aq', JSON.stringify(STATE.aqList));
+    }
+    if (d.Auditorias && d.Auditorias.length > 0) {
+      STATE.auditorias = d.Auditorias;
+      localStorage.setItem('sgq_auditorias', JSON.stringify(STATE.auditorias));
+    }
+    if (d.POPs && d.POPs.length > 0) {
+      STATE.popList = d.POPs;
+      localStorage.setItem('sgq_pop', JSON.stringify(STATE.popList));
+    }
+    if (d.Processos && d.Processos.length > 0) {
+      STATE.processosList = d.Processos;
+      localStorage.setItem('sgq_processos', JSON.stringify(STATE.processosList));
+    }
+    console.log('✓ Dados sincronizados do GAS');
+  } catch(e) {
+    console.warn('Não foi possível carregar dados do GAS:', e.message);
+  }
+}
 
 function updateClock() {
   const now = new Date();
@@ -3050,16 +3090,12 @@ async function testConnection() {
 async function gasPost(action, data) {
   if (!STATE.gasUrl) return;
   try {
-    // GAS doesn't support CORS preflight - use no-cors with text/plain
-    // This avoids the OPTIONS preflight that blocks application/json
-    await fetch(STATE.gasUrl, {
-      method: 'POST',
-      mode: 'no-cors',
-      headers: { 'Content-Type': 'text/plain' },
-      body: JSON.stringify({ action, data })
-    });
+    // GET com parametros na URL - metodo mais confiavel com GAS
+    const payload = encodeURIComponent(JSON.stringify({ action, data }));
+    const url = STATE.gasUrl + "?payload=" + payload;
+    await fetch(url, { method: "GET", mode: "no-cors" });
   } catch(e) {
-    console.warn('GAS sync error:', e);
+    console.warn("GAS sync error:", e);
   }
 }
 
@@ -3106,35 +3142,7 @@ document.getElementById('aq-foto').addEventListener('change', function() {
 });
 
 // Sample data for demo
-function loadSampleData() {
-  if (STATE.aqList.length > 0) return;
-  const deptos = ['Oficina','Funilaria','Pneus','Vendas Caminhões'];
-  const unidades = ['Sorocaba','Itu','Itapeva'];
-  const tipos = ['Retrabalho','Garantia','Tempo técnico'];
-  const status = ['Aberto','Em Andamento','Concluído'];
-  for (let i = 1; i <= 8; i++) {
-    STATE.aqList.push({
-      numero: 'AQ-2025-' + String(i).padStart(3,'0'),
-      data: '2025-' + String(Math.floor(Math.random()*6)+1).padStart(2,'0') + '-' + String(Math.floor(Math.random()*28)+1).padStart(2,'0'),
-      unidade: unidades[i%3],
-      departamento: deptos[i%4],
-      origem: i%3===0?'Cliente':'Interno',
-      descricao: 'Problema identificado na área de ' + deptos[i%4] + ' - não conformidade registrada.',
-      custo: String(Math.floor(Math.random()*5000)+500),
-      tipoCusto: tipos[i%3],
-      status: status[i%3]
-    });
-  }
-  localStorage.setItem('sgq_aq', JSON.stringify(STATE.aqList));
-
-  // Sample auditorias
-  unidades.forEach(u => {
-    STATE.auditorias.push({ data:'2025-03-01', unidade:u, area:'Qualidade', auditor:'Auditor SGQ', total:10, ok:Math.floor(Math.random()*3)+6, nok:Math.floor(Math.random()*3), na:1, score:Math.floor(Math.random()*25)+70 });
-  });
-  localStorage.setItem('sgq_auditorias', JSON.stringify(STATE.auditorias));
-}
-
-loadSampleData();
+// Dados de exemplo removidos — sistema usa apenas dados reais do GAS/localStorage
 </script>
 </body>
 </html>
