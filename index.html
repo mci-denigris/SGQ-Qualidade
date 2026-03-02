@@ -6,6 +6,8 @@
 <title>SGQ – Mercedes-Benz</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
@@ -272,8 +274,14 @@
       <span class="icon">📊</span> Indicadores
     </div>
     <div class="nav-section">Configuração</div>
+    <div class="nav-item" onclick="showPage('exportar', this)">
+      <span class="icon">⬇</span> Exportar Dados
+    </div>
     <div class="nav-item" onclick="showPage('config', this)">
       <span class="icon">⚙</span> Configurar Google Sheets
+    </div>
+    <div class="nav-item" onclick="showPage('tipos', this)">
+      <span class="icon">🏷</span> Tipos de Problema
     </div>
   </nav>
   <div class="sidebar-footer">
@@ -421,7 +429,10 @@
   <div id="page-auditorias" class="page fade-in">
     <div class="section-header">
       <div class="section-title">Auditorias</div>
-      <button class="btn btn-primary" onclick="openAudModal()">+ Nova Auditoria</button>
+      <div style="display:flex;gap:8px;">
+        <button class="btn btn-secondary" onclick="openGerenciarPerguntas()">⚙ Perguntas do Checklist</button>
+        <button class="btn btn-primary" onclick="openAudModal()">+ Nova Auditoria</button>
+      </div>
     </div>
 
     <div class="table-wrap" style="margin-bottom:20px;">
@@ -456,7 +467,7 @@
     <div class="table-wrap">
       <table>
         <thead>
-          <tr><th>Código</th><th>Processo</th><th>Versão</th><th>Responsável</th><th>Data Rev.</th><th>Ações</th></tr>
+          <tr><th>Tipo</th><th>Código</th><th>Processo</th><th>Revisão</th><th>Responsável</th><th>Data Rev.</th><th>Ações</th></tr>
         </thead>
         <tbody id="pop-tbody">
           <tr><td colspan="6" style="text-align:center;color:#475569;padding:32px;">Nenhum POP cadastrado.</td></tr>
@@ -528,6 +539,100 @@
   </div>
 
   <!-- =================== CONFIG =================== -->
+  <!-- =================== EXPORTAR DADOS =================== -->
+  <div id="page-exportar" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">Exportar Dados</div>
+    </div>
+
+    <!-- Summary cards -->
+    <div class="kpi-grid" style="margin-bottom:24px;" id="export-kpis"></div>
+
+    <!-- Export options -->
+    <div class="chart-grid" style="grid-template-columns:repeat(auto-fill,minmax(300px,1fr));">
+
+      <!-- Excel export -->
+      <div class="chart-card">
+        <div class="chart-title">📊 Exportar para Excel</div>
+        <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Gera planilha Excel (.xlsx) com abas separadas para cada módulo: AQ, Auditorias, POPs/ITs e Processos.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-primary" onclick="exportarExcelCompleto()">⬇ Exportar Tudo (.xlsx)</button>
+          <button class="btn btn-secondary" onclick="exportarExcelAQ()">📋 Só Alertas de Qualidade</button>
+          <button class="btn btn-secondary" onclick="exportarExcelPlano()">📌 Só Plano de Ação</button>
+          <button class="btn btn-secondary" onclick="exportarExcelAuditorias()">✅ Só Auditorias</button>
+          <button class="btn btn-secondary" onclick="exportarExcelPOP()">📄 Só POPs / ITs</button>
+        </div>
+      </div>
+
+      <!-- JSON backup/restore -->
+      <div class="chart-card">
+        <div class="chart-title">💾 Backup Completo (JSON)</div>
+        <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Faz backup de todos os dados do sistema em JSON. Use para restaurar em outro dispositivo ou navagador.</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-primary" onclick="exportarJSON()">⬇ Baixar Backup (.json)</button>
+          <label class="btn btn-secondary" style="cursor:pointer;text-align:center;">
+            ⬆ Restaurar Backup
+            <input type="file" accept=".json" onchange="restaurarJSON(event)" style="display:none;">
+          </label>
+          <button class="btn btn-danger" onclick="limparTodosDados()" style="margin-top:4px;">🗑 Limpar Todos os Dados</button>
+        </div>
+      </div>
+
+      <!-- Word export for all POPs/ITs -->
+      <div class="chart-card">
+        <div class="chart-title">📝 Exportar POPs / ITs em Word</div>
+        <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Gera arquivos Word individuais para cada POP ou IT cadastrado no sistema.</p>
+        <div id="export-pop-list" style="max-height:180px;overflow-y:auto;margin-bottom:12px;display:flex;flex-direction:column;gap:6px;"></div>
+        <button class="btn btn-secondary" onclick="loadExportPOPList()">↻ Atualizar Lista</button>
+      </div>
+
+      <!-- CSV export -->
+      <div class="chart-card">
+        <div class="chart-title">📃 Exportar CSV</div>
+        <p style="font-size:13px;color:#94a3b8;margin-bottom:16px;">Formato simples compatível com qualquer planilha (Excel, Google Sheets, LibreOffice).</p>
+        <div style="display:flex;flex-direction:column;gap:8px;">
+          <button class="btn btn-secondary" onclick="exportarCSV('aq')">⬇ AQs em CSV</button>
+          <button class="btn btn-secondary" onclick="exportarCSV('plano')">⬇ Plano de Ação em CSV</button>
+          <button class="btn btn-secondary" onclick="exportarCSV('auditorias')">⬇ Auditorias em CSV</button>
+          <button class="btn btn-secondary" onclick="exportarCSV('pop')">⬇ POPs/ITs em CSV</button>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── TIPOS DE PROBLEMA ── -->
+  <div id="page-tipos" class="page fade-in">
+    <div class="section-header">
+      <div class="section-title">🏷 Tipos de Problema</div>
+      <div class="section-sub">Gerencie os tipos disponíveis no formulário de AQ · Específicos para De Nigris Mercedes-Benz</div>
+    </div>
+
+    <div class="panel" style="margin-bottom:20px">
+      <div class="panel-title">Adicionar novo tipo</div>
+      <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end">
+        <div class="form-group" style="flex:1;min-width:200px;margin:0">
+          <label>Categoria</label>
+          <select id="tipo-categoria-new" style="width:100%">
+            <option value="Vendas">Vendas</option>
+            <option value="Pós-Vendas / Serviços">Pós-Vendas / Serviços</option>
+            <option value="Peças">Peças</option>
+            <option value="Pneus">Pneus</option>
+            <option value="Administrativo / Interno">Administrativo / Interno</option>
+            <option value="Qualidade">Qualidade</option>
+          </select>
+        </div>
+        <div class="form-group" style="flex:2;min-width:280px;margin:0">
+          <label>Descrição do tipo</label>
+          <input type="text" id="tipo-novo-nome" placeholder="Ex: Entrega com atraso — Caminhões" style="width:100%">
+        </div>
+        <button class="btn btn-primary" onclick="adicionarTipoProblema()" style="margin-bottom:0">+ Adicionar</button>
+      </div>
+    </div>
+
+    <div id="tipos-lista" style="display:flex;flex-direction:column;gap:12px"></div>
+  </div>
+
   <div id="page-config" class="page fade-in">
     <div class="section-header">
       <div class="section-title">Configurar Google Sheets</div>
@@ -535,8 +640,8 @@
 
     <div class="gs-info">
       <strong>🔗 Integração com Google Sheets + Apps Script</strong><br>
-      Configure abaixo a URL do seu Google Apps Script (GAS) para conectar o sistema ao banco de dados em nuvem.
-      Siga os passos para publicar seu Apps Script como Web App.
+      Configure abaixo a URL do seu Google Apps Script (GAS) para salvar os dados automaticamente na planilha.
+      Siga o passo a passo abaixo para ativar a integração.
     </div>
 
     <div class="panel">
@@ -551,88 +656,164 @@
           <input type="text" id="drive-folder" placeholder="1ABC...XYZ (ID da pasta no Drive)">
         </div>
       </div>
-      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;">
+      <div style="margin-top:16px;display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
         <button class="btn btn-primary" onclick="saveConfig()">💾 Salvar Configuração</button>
         <button class="btn btn-secondary" onclick="testConnection()">🔌 Testar Conexão</button>
+        <button class="btn btn-secondary" onclick="syncCompleto()">⟳ Sincronizar Tudo Agora</button>
         <span id="config-status" style="font-size:13px;padding:10px 0;color:#64748b;"></span>
+      </div>
+      <div style="margin-top:14px;background:rgba(245,158,11,0.08);border:1px solid rgba(245,158,11,0.25);border-radius:8px;padding:12px 14px;font-size:12px;color:#fbbf24;line-height:1.7;">
+        ⚠️ <strong>Importante:</strong> Ao publicar o Web App no GAS, selecione <strong>"Qualquer pessoa"</strong> em "Quem tem acesso".
+        Após qualquer alteração no código GAS, clique em <strong>"Nova implantação"</strong> (não "Gerenciar implantações").
       </div>
     </div>
 
     <div class="panel">
-      <div class="panel-title">2. Código do Google Apps Script (cole no editor GAS)</div>
-      <p style="font-size:13px;color:#64748b;margin-bottom:12px;">
-        Acesse <strong style="color:#00c6ff">script.google.com</strong> → Novo projeto → cole o código abaixo → Publicar como Web App (acesso: Qualquer pessoa).
-      </p>
-      <div class="setup-box">// ============================================================
-// SGQ Mercedes-Benz – Google Apps Script
-// Cole este código em: script.google.com > Novo Projeto
-// ============================================================
+      <div class="panel-title">2. Passo a Passo – Configurar o Google Apps Script</div>
+      <div style="display:flex;flex-direction:column;gap:10px;margin-bottom:16px;font-size:13px;">
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px;background:rgba(0,198,255,0.05);border-radius:8px;border-left:3px solid #00c6ff;">
+          <span style="font-weight:700;color:#00c6ff;flex-shrink:0;">1.</span>
+          <span>Acesse <a href="https://script.google.com" target="_blank" style="color:#00c6ff;">script.google.com</a> → clique em <strong>Novo projeto</strong></span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px;background:rgba(0,198,255,0.05);border-radius:8px;border-left:3px solid #00c6ff;">
+          <span style="font-weight:700;color:#00c6ff;flex-shrink:0;">2.</span>
+          <span>Apague o código padrão e cole <strong>todo o código abaixo</strong>. Substitua <code style="background:#0d1626;padding:2px 6px;border-radius:4px;color:#fbbf24;">SEU_ID_DA_PLANILHA</code> pelo ID da sua planilha Google Sheets</span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px;background:rgba(0,198,255,0.05);border-radius:8px;border-left:3px solid #00c6ff;">
+          <span style="font-weight:700;color:#00c6ff;flex-shrink:0;">3.</span>
+          <span>Clique em <strong>Implantar → Nova implantação</strong> → Tipo: <strong>App da Web</strong> → Executar como: <strong>Eu mesmo</strong> → Acesso: <strong>Qualquer pessoa</strong> → Clique em <strong>Implantar</strong></span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px;background:rgba(0,198,255,0.05);border-radius:8px;border-left:3px solid #00c6ff;">
+          <span style="font-weight:700;color:#00c6ff;flex-shrink:0;">4.</span>
+          <span>Copie a <strong>URL do Web App</strong> gerada e cole no campo acima. Clique em <strong>Salvar Configuração</strong> e depois <strong>Testar Conexão</strong></span>
+        </div>
+        <div style="display:flex;gap:12px;align-items:flex-start;padding:10px;background:rgba(245,158,11,0.08);border-radius:8px;border-left:3px solid #f59e0b;">
+          <span style="color:#fbbf24;flex-shrink:0;">⚠</span>
+          <span style="color:#fbbf24;">Se fizer qualquer mudança no código GAS, sempre use <strong>Nova implantação</strong> (nunca "Gerenciar implantações existentes")</span>
+        </div>
+      </div>
+      <div class="setup-box">// ================================================================
+// SGQ – Google Apps Script  |  Cole em: script.google.com
+// IMPORTANTE: Publicar como Web App → Executar como: Eu mesmo
+//             Quem tem acesso: Qualquer pessoa (sem login)
+// Após qualquer edição: Nova implantação (não Gerenciar)
+// ================================================================
 
-const SS_ID = 'SEU_ID_DA_PLANILHA'; // &lt;-- Substitua aqui
-const DRIVE_FOLDER_ID = 'SEU_ID_DA_PASTA_DRIVE'; // &lt;-- Substitua aqui
+const SS_ID = 'SEU_ID_DA_PLANILHA'; // ← Cole aqui o ID da sua planilha
+// (O ID está na URL: docs.google.com/spreadsheets/d/ID_AQUI/edit)
+
+// ---- Headers de cada aba ----
+const HEADERS = {
+  AQ:         ['numero','data','unidade','departamento','origem','tipoProblema','descricao','custo','tipoCusto','status'],
+  Brainstorm: ['aqNumero','causa'],
+  Ishikawa:   ['aqNumero','categoria','causa'],
+  '5Porques': ['aqNumero','nivel','pergunta','resposta'],
+  PlanoAcao:  ['aqNumero','acao','responsavel','prazo','status'],
+  Auditorias: ['data','unidade','area','auditor','total','ok','nok','na','score'],
+  Checklist:  ['auditoriaId','pergunta','resposta','observacao'],
+  POP:        ['tipo','codigo','processo','versao','responsavel','dataRevisao','elaborado','aprovado'],
+  Processos:  ['nome','descricao','etapas'],
+};
 
 function doPost(e) {
-  const params = JSON.parse(e.postData.contents);
-  const action = params.action;
-  const ss = SpreadsheetApp.openById(SS_ID);
-  let result;
+  try {
+    // Accepts text/plain (no CORS preflight) with JSON body
+    const body = e.postData ? e.postData.contents : '{}';
+    const params = JSON.parse(body);
+    const action = params.action;
+    const data   = params.data || {};
+    const ss     = SpreadsheetApp.openById(SS_ID);
 
-  if (action === 'saveAQ') result = saveRow(ss, 'AQ', params.data);
-  else if (action === 'saveBrainstorm') result = saveRow(ss, 'Brainstorm', params.data);
-  else if (action === 'saveIshikawa') result = saveRow(ss, 'Ishikawa', params.data);
-  else if (action === 'save5Por') result = saveRow(ss, '5Porques', params.data);
-  else if (action === 'savePlano') result = saveRow(ss, 'PlanoAcao', params.data);
-  else if (action === 'saveAuditoria') result = saveRow(ss, 'Auditorias', params.data);
-  else if (action === 'saveChecklist') result = saveRow(ss, 'Checklist', params.data);
-  else if (action === 'savePOP') result = saveRow(ss, 'POP', params.data);
-  else if (action === 'saveProcesso') result = saveRow(ss, 'Processos', params.data);
+    const actionMap = {
+      saveAQ:        ['AQ',         data],
+      saveBrainstorm:['Brainstorm', data],
+      saveIshikawa:  ['Ishikawa',   data],
+      save5Por:      ['5Porques',   data],
+      savePlano:     ['PlanoAcao',  data],
+      saveAuditoria: ['Auditorias', data],
+      saveChecklist: ['Checklist',  data],
+      savePOP:       ['POP',        data],
+      saveProcesso:  ['Processos',  data],
+    };
 
-  return ContentService.createTextOutput(JSON.stringify(result))
-    .setMimeType(ContentService.MimeType.JSON);
+    if (actionMap[action]) {
+      const [sheetName, rowData] = actionMap[action];
+      upsertRow(ss, sheetName, rowData);
+    }
+
+    return json({success: true, action});
+  } catch(err) {
+    return json({success: false, error: err.message});
+  }
 }
 
 function doGet(e) {
-  const sheet = e.parameter.sheet;
-  const ss = SpreadsheetApp.openById(SS_ID);
-  const sh = ss.getSheetByName(sheet);
-  if (!sh) return json({data: []});
+  try {
+    const action = e.parameter.action || '';
+    if (action === 'ping') return json({pong: true, ts: new Date().toISOString()});
 
-  const rows = sh.getDataRange().getValues();
-  if (rows.length &lt; 2) return json({data: []});
+    const sheet = e.parameter.sheet || 'AQ';
+    const ss = SpreadsheetApp.openById(SS_ID);
+    const sh = ss.getSheetByName(sheet);
+    if (!sh || sh.getLastRow() &lt; 2) return json({data: []});
 
-  const headers = rows[0];
-  const data = rows.slice(1).map(row => {
-    let obj = {};
-    headers.forEach((h, i) => obj[h] = row[i]);
-    return obj;
-  });
-  return json({data});
+    const rows    = sh.getDataRange().getValues();
+    const headers = rows[0];
+    const data    = rows.slice(1).map(row => {
+      const obj = {};
+      headers.forEach((h, i) => obj[h] = row[i]);
+      return obj;
+    });
+    return json({data});
+  } catch(err) {
+    return json({error: err.message});
+  }
 }
 
-function saveRow(ss, sheetName, data) {
+// Insere nova linha ou atualiza existente (baseado na 1ª coluna = chave)
+function upsertRow(ss, sheetName, data) {
   let sh = ss.getSheetByName(sheetName);
-  if (!sh) sh = ss.insertSheet(sheetName);
-  if (sh.getLastRow() === 0) sh.appendRow(Object.keys(data));
-  sh.appendRow(Object.values(data));
-  return {success: true};
+  if (!sh) {
+    sh = ss.insertSheet(sheetName);
+  }
+
+  const headers = HEADERS[sheetName] || Object.keys(data);
+
+  // Set headers if sheet is empty
+  if (sh.getLastRow() === 0) {
+    sh.appendRow(headers);
+    sh.getRange(1, 1, 1, headers.length).setFontWeight('bold').setBackground('#e8f0fe');
+    sh.setFrozenRows(1);
+  }
+
+  // Build row in header order
+  const row = headers.map(h => {
+    const val = data[h];
+    return (val === undefined || val === null) ? '' : val;
+  });
+
+  // Try to find and update existing row by first key
+  const key     = headers[0];
+  const keyVal  = String(data[key] || '');
+  if (keyVal) {
+    const allData = sh.getDataRange().getValues();
+    for (let i = 1; i &lt; allData.length; i++) {
+      if (String(allData[i][0]) === keyVal) {
+        sh.getRange(i + 1, 1, 1, row.length).setValues([row]);
+        return {updated: true};
+      }
+    }
+  }
+
+  sh.appendRow(row);
+  return {inserted: true};
 }
 
 function json(obj) {
-  return ContentService.createTextOutput(JSON.stringify(obj))
+  return ContentService
+    .createTextOutput(JSON.stringify(obj))
     .setMimeType(ContentService.MimeType.JSON);
-}
-
-// Estrutura esperada das abas (Google Sheets):
-// AQ: numero, data, unidade, departamento, origem, descricao, foto, custo, tipoCusto, status
-// Brainstorm: aqNumero, causa
-// Ishikawa: aqNumero, categoria, causa
-// 5Porques: aqNumero, nivel, pergunta, resposta
-// PlanoAcao: aqNumero, acao, responsavel, prazo, status
-// Auditorias: data, unidade, area, auditor, total, ok, nok, na, score
-// Checklist: auditoriaId, pergunta, resposta, foto, observacao
-// POP: codigo, processo, versao, responsavel, dataRevisao, conteudo
-// Processos: nome, descricao, etapas
-      </div>
+}</div>
     </div>
 
     <div class="panel">
@@ -723,6 +904,12 @@ function json(obj) {
             <label>Status</label>
             <select id="aq-status">
               <option>Aberto</option><option>Em Andamento</option><option>Concluído</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label>Tipo de Problema</label>
+            <select id="aq-tipo-problema">
+              <option value="">Selecione...</option>
             </select>
           </div>
           <div class="form-group full">
@@ -849,7 +1036,11 @@ function json(obj) {
 
       <!-- Checklist -->
       <div id="aud-tab-checklist" style="display:none;">
-        <div id="checklist-items"></div>
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;flex-wrap:wrap;gap:8px;">
+          <span style="font-size:13px;color:#64748b;">Marque as respostas para cada pergunta</span>
+          <button class="btn btn-secondary btn-sm" onclick="openGerenciarPerguntas()">⚙ Gerenciar Perguntas</button>
+        </div>
+        <div id="checklist-items" style="max-height:55vh;overflow-y:auto;padding-right:4px;"></div>
         <div style="margin-top:16px;">
           <button class="btn btn-primary" onclick="calcAuditoria()">📊 Gerar Relatório</button>
         </div>
@@ -913,44 +1104,132 @@ function json(obj) {
   </div>
 </div>
 
-<!-- =================== MODAL: POP =================== -->
+<!-- =================== MODAL: POP / IT =================== -->
 <div class="modal-overlay" id="modal-pop">
-  <div class="modal" style="max-width:700px;">
+  <div class="modal" style="max-width:860px;">
     <div class="modal-header">
       <div class="modal-title" id="pop-modal-title">Novo POP / IT</div>
       <span class="close-btn" onclick="closeModal('modal-pop')">✕</span>
     </div>
-    <div class="modal-body">
-      <div class="form-grid">
+    <div class="modal-body" style="max-height:80vh;overflow-y:auto;">
+
+      <!-- Type selector -->
+      <div style="display:flex;gap:10px;margin-bottom:20px;">
+        <button id="btn-tipo-pop" class="btn btn-primary" onclick="setTipoDoc('POP')">📋 POP – Procedimento</button>
+        <button id="btn-tipo-it" class="btn btn-secondary" onclick="setTipoDoc('IT')">📄 IT – Instrução de Trabalho</button>
+      </div>
+
+      <!-- Campos comuns -->
+      <div class="form-grid" style="margin-bottom:16px;">
         <div class="form-group">
-          <label>Código</label>
-          <input type="text" id="pop-codigo" placeholder="POP-OF-001">
+          <label>Tipo</label>
+          <input type="text" id="pop-tipo" readonly style="background:#0a0e1a;color:#64748b;">
         </div>
         <div class="form-group">
-          <label>Versão</label>
-          <input type="text" id="pop-versao" placeholder="1.0">
+          <label>Número</label>
+          <input type="text" id="pop-codigo" placeholder="POP-OF-001 ou IT-ADM-001">
         </div>
         <div class="form-group">
-          <label>Responsável</label>
-          <input type="text" id="pop-responsavel" placeholder="Nome do responsável">
+          <label>Revisão</label>
+          <input type="text" id="pop-versao" placeholder="0">
         </div>
         <div class="form-group">
-          <label>Data de Revisão</label>
+          <label>Data</label>
           <input type="date" id="pop-data">
         </div>
         <div class="form-group full">
-          <label>Nome do Processo</label>
-          <input type="text" id="pop-processo" placeholder="Ex: Troca de Óleo – Padrão">
+          <label>Título / Processo</label>
+          <input type="text" id="pop-processo" placeholder="Ex: Recepção – Realizar recepção">
         </div>
-        <div class="form-group full">
-          <label>Conteúdo / Procedimento</label>
-          <textarea id="pop-conteudo" placeholder="Descreva o procedimento operacional padrão..." style="min-height:150px;"></textarea>
+        <div class="form-group">
+          <label>Elaborado por</label>
+          <input type="text" id="pop-elaborado" placeholder="Nome">
+        </div>
+        <div class="form-group">
+          <label>Analisado por</label>
+          <input type="text" id="pop-analisado" placeholder="Nome">
+        </div>
+        <div class="form-group">
+          <label>Aprovado por</label>
+          <input type="text" id="pop-aprovado" placeholder="Nome">
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <input type="text" id="pop-responsavel" placeholder="Cargo/Responsável">
         </div>
       </div>
+
+      <!-- ===== CAMPOS POP ===== -->
+      <div id="pop-fields">
+        <div class="panel-title" style="margin-bottom:10px;">👤 Responsáveis</div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Cargos Responsáveis (um por linha)</label>
+          <textarea id="pop-responsaveis-txt" placeholder="Consultor de Serviços&#10;Agendador" style="min-height:80px;"></textarea>
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Atividades do Responsável (uma por linha)</label>
+          <textarea id="pop-atividades-resp" placeholder="RECEBER O CLIENTE&#10;INICIAR ATENDIMENTO&#10;REALIZAR RECEPÇÃO ATIVA" style="min-height:80px;"></textarea>
+        </div>
+
+        <div class="panel-title" style="margin:16px 0 10px;">📋 Atividades / Tarefas</div>
+        <div id="pop-atividades-list" style="display:flex;flex-direction:column;gap:10px;"></div>
+        <button class="btn btn-secondary" style="margin-top:10px;" onclick="addAtividade()">+ Adicionar Atividade</button>
+      </div>
+
+      <!-- ===== CAMPOS IT ===== -->
+      <div id="it-fields" style="display:none;">
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Sistema / Documento Pai</label>
+          <input type="text" id="it-sistema" placeholder="Sistema de Gestão Integrada">
+        </div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <label>Complementar à</label>
+          <input type="text" id="it-complementar" placeholder="IT-ADM-001 – Instrução de Trabalho de Portaria">
+        </div>
+
+        <div class="panel-title" style="margin:16px 0 8px;">1 – Objetivo</div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <textarea id="it-objetivo" placeholder="Descreva o objetivo desta instrução..." style="min-height:70px;"></textarea>
+        </div>
+
+        <div class="panel-title" style="margin:8px 0;">2 – Documentos de Referência</div>
+        <div class="form-group" style="margin-bottom:12px;">
+          <textarea id="it-documentos" placeholder="MGI-01 – Manual de Gestão Integrada&#10;IT-ADM-001 – Instrução de Trabalho de Portaria" style="min-height:70px;"></textarea>
+        </div>
+
+        <div id="it-secoes-list" style="display:flex;flex-direction:column;gap:12px;"></div>
+        <button class="btn btn-secondary" style="margin-top:10px;" onclick="addSecaoIT()">+ Adicionar Seção</button>
+      </div>
+
     </div>
     <div class="modal-footer">
       <button class="btn btn-secondary" onclick="closeModal('modal-pop')">Cancelar</button>
-      <button class="btn btn-primary" onclick="savePOP()">💾 Salvar POP</button>
+      <button class="btn btn-secondary" onclick="gerarWordPOP()">📥 Gerar Word</button>
+      <button class="btn btn-primary" onclick="savePOP()">💾 Salvar</button>
+    </div>
+  </div>
+</div>
+
+<!-- =================== MODAL: GERENCIAR PERGUNTAS =================== -->
+<div class="modal-overlay" id="modal-perguntas">
+  <div class="modal" style="max-width:680px;">
+    <div class="modal-header">
+      <div class="modal-title">⚙ Gerenciar Perguntas do Checklist</div>
+      <span class="close-btn" onclick="closeModal('modal-perguntas')">✕</span>
+    </div>
+    <div class="modal-body">
+      <div style="background:rgba(0,198,255,0.05);border:1px solid rgba(0,198,255,0.15);border-radius:10px;padding:12px 16px;margin-bottom:16px;font-size:13px;color:#94a3b8;">
+        💡 As perguntas definidas aqui serão usadas em todas as novas auditorias. Você pode adicionar, editar ou excluir perguntas conforme necessário.
+      </div>
+      <div id="perguntas-list" style="display:flex;flex-direction:column;gap:8px;max-height:50vh;overflow-y:auto;padding-right:4px;margin-bottom:16px;"></div>
+      <div style="display:flex;gap:8px;">
+        <input type="text" id="nova-pergunta-input" placeholder="Digite uma nova pergunta..." style="flex:1;" onkeydown="if(event.key==='Enter')adicionarPergunta()">
+        <button class="btn btn-primary" onclick="adicionarPergunta()">+ Adicionar</button>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-secondary" onclick="closeModal('modal-perguntas')">Fechar</button>
+      <button class="btn btn-primary" onclick="salvarPerguntas()">💾 Salvar Perguntas</button>
     </div>
   </div>
 </div>
@@ -970,7 +1249,48 @@ const STATE = {
   porquesItems: [],
   planoItems: [],
   checklistItems: [],
-  charts: {}
+  charts: {},
+  tiposProblema: JSON.parse(localStorage.getItem('sgo_tipos_problema') || 'null') || [
+    { cat: "Vendas", nome: "Venda cancelada / desistência do cliente" },
+    { cat: "Vendas", nome: "Erro na proposta comercial / precificação" },
+    { cat: "Vendas", nome: "Prazo de entrega do veículo não cumprido" },
+    { cat: "Vendas", nome: "Documentação do veículo incorreta ou ausente" },
+    { cat: "Vendas", nome: "Financiamento Banco MB — problema de aprovação" },
+    { cat: "Vendas", nome: "Veículo entregue com avaria ou defeito" },
+    { cat: "Vendas", nome: "Reclamação de cliente — atendimento comercial" },
+    { cat: "Vendas", nome: "Desconto não autorizado concedido" },
+    { cat: "Pós-Vendas / Serviços", nome: "Retrabalho — serviço realizado incorretamente" },
+    { cat: "Pós-Vendas / Serviços", nome: "Garantia de fábrica — reclamação" },
+    { cat: "Pós-Vendas / Serviços", nome: "Prazo de OS não cumprido" },
+    { cat: "Pós-Vendas / Serviços", nome: "Veículo retornou com o mesmo problema (recidiva)" },
+    { cat: "Pós-Vendas / Serviços", nome: "Atendimento S24H — falha ou atraso" },
+    { cat: "Pós-Vendas / Serviços", nome: "Falha na diagnose / diagnóstico incorreto" },
+    { cat: "Pós-Vendas / Serviços", nome: "Serviço realizado sem autorização do cliente" },
+    { cat: "Pós-Vendas / Serviços", nome: "Reclamação de cliente — pós-atendimento" },
+    { cat: "Pós-Vendas / Serviços", nome: "Veículo danificado durante serviço interno" },
+    { cat: "Peças", nome: "Peça incorreta fornecida ao cliente ou oficina" },
+    { cat: "Peças", nome: "Peça com defeito / não original" },
+    { cat: "Peças", nome: "Ruptura de estoque — peça crítica em falta" },
+    { cat: "Peças", nome: "Erro de precificação de peça" },
+    { cat: "Peças", nome: "Divergência de estoque (sistema x físico)" },
+    { cat: "Peças", nome: "Devolução de peça — procedimento incorreto" },
+    { cat: "Peças", nome: "Demora no recebimento de pedido ao fabricante" },
+    { cat: "Pneus", nome: "Pneu montado incorretamente" },
+    { cat: "Pneus", nome: "Balanceamento / alinhamento com falha" },
+    { cat: "Pneus", nome: "Pneu com defeito de fabricação — garantia" },
+    { cat: "Pneus", nome: "Estoque de pneu em desacordo" },
+    { cat: "Pneus", nome: "Reclamação de cliente — serviço de pneus" },
+    { cat: "Administrativo / Interno", nome: "Falha em processo interno / procedimento" },
+    { cat: "Administrativo / Interno", nome: "Erro em faturamento / Nota Fiscal" },
+    { cat: "Administrativo / Interno", nome: "Não conformidade em auditoria interna" },
+    { cat: "Administrativo / Interno", nome: "Colaborador sem treinamento obrigatório" },
+    { cat: "Administrativo / Interno", nome: "EPI / segurança — não conformidade" },
+    { cat: "Administrativo / Interno", nome: "Instalações / infraestrutura — problema" },
+    { cat: "Qualidade", nome: "Indicador StarClass abaixo da faixa mínima" },
+    { cat: "Qualidade", nome: "CXi abaixo da meta — cliente insatisfeito" },
+    { cat: "Qualidade", nome: "Auditoria externa — não conformidade" },
+    { cat: "Qualidade", nome: "Reincidência de problema já registrado" },
+  ]
 };
 
 // ==================== INIT ====================
@@ -991,6 +1311,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('aq-numero').value = 'AQ-' + new Date().getFullYear() + '-' + String(STATE.aqList.length + 1).padStart(3,'0');
 
   initPorques();
+  popularSelectTipos();
   loadDashboard();
 });
 
@@ -1008,10 +1329,12 @@ const PAGE_TITLES = {
   processos: 'Mapeamento de Processos',
   pop: 'Banco de POP / IT',
   indicadores: 'Indicadores de Qualidade',
+  exportar: 'Exportar Dados',
   config: 'Configuração do Sistema'
 };
 
 function showPage(page, el) {
+  if (page === 'tipos') renderTiposLista();
   document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
   document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
   document.getElementById('page-' + page).classList.add('active');
@@ -1030,6 +1353,7 @@ function showPage(page, el) {
   if (page === 'pop') renderPOPTable();
   if (page === 'processos') renderProcessos();
   if (page === 'indicadores') loadIndicadores();
+  if (page === 'exportar') loadExportPage();
 }
 
 function toggleSidebar() {
@@ -1043,6 +1367,95 @@ function toggleSidebar() {
 function openModal(id) { document.getElementById(id).classList.add('open'); }
 function closeModal(id) { document.getElementById(id).classList.remove('open'); }
 
+
+// ── Gerenciador de Tipos de Problema ─────────────────────────────────────
+
+function salvarTiposProblema() {
+  localStorage.setItem('sgo_tipos_problema', JSON.stringify(STATE.tiposProblema));
+}
+
+function popularSelectTipos() {
+  const sel = document.getElementById('aq-tipo-problema');
+  if (!sel) return;
+  const atual = sel.value;
+  sel.innerHTML = '<option value="">Selecione...</option>';
+  const cats = [...new Set(STATE.tiposProblema.map(t => t.cat))];
+  cats.forEach(cat => {
+    const grp = document.createElement('optgroup');
+    grp.label = cat;
+    STATE.tiposProblema.filter(t => t.cat === cat).forEach(t => {
+      const opt = document.createElement('option');
+      opt.value = t.nome;
+      opt.textContent = t.nome;
+      grp.appendChild(opt);
+    });
+    sel.appendChild(grp);
+  });
+  if (atual) sel.value = atual;
+}
+
+function renderTiposLista() {
+  const container = document.getElementById('tipos-lista');
+  if (!container) return;
+  const catColors = {
+    "Vendas":"#00c6ff","Pós-Vendas / Serviços":"#10b981",
+    "Peças":"#f59e0b","Pneus":"#8b5cf6",
+    "Administrativo / Interno":"#ec4899","Qualidade":"#ef4444"
+  };
+  const cats = [...new Set(STATE.tiposProblema.map(t => t.cat))];
+  container.innerHTML = cats.map(cat => {
+    const tipos = STATE.tiposProblema.filter(t => t.cat === cat);
+    const cor = catColors[cat] || "#64748b";
+    return `<div style="background:#0f1923;border:1px solid #1e2d45;border-radius:10px;overflow:hidden;margin-bottom:4px">
+      <div style="padding:12px 16px;background:rgba(255,255,255,0.03);border-bottom:1px solid #1e2d45;display:flex;align-items:center;gap:10px">
+        <span style="width:10px;height:10px;border-radius:50%;background:${cor};display:inline-block"></span>
+        <span style="font-weight:700;font-size:13px;color:${cor}">${cat}</span>
+        <span style="font-size:11px;color:#475569">${tipos.length} tipos</span>
+      </div>
+      <div style="padding:8px">
+        ${tipos.map(t => {
+          const idx = STATE.tiposProblema.indexOf(t);
+          return `<div style="display:flex;align-items:center;gap:8px;padding:8px 10px;border-radius:6px" onmouseover="this.style.background='rgba(255,255,255,0.03)'" onmouseout="this.style.background='transparent'">
+            <span style="flex:1;font-size:13px;color:#cbd5e1">${t.nome}</span>
+            <button onclick="editarTipo(${idx})" style="background:rgba(0,198,255,0.1);border:1px solid rgba(0,198,255,0.2);color:#00c6ff;padding:3px 10px;border-radius:5px;font-size:11px;cursor:pointer">Editar</button>
+            <button onclick="removerTipo(${idx})" style="background:rgba(239,68,68,0.1);border:1px solid rgba(239,68,68,0.2);color:#ef4444;padding:3px 10px;border-radius:5px;font-size:11px;cursor:pointer">✕</button>
+          </div>`;
+        }).join('')}
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function adicionarTipoProblema() {
+  const cat  = document.getElementById('tipo-categoria-new').value;
+  const nome = document.getElementById('tipo-novo-nome').value.trim();
+  if (!nome) { alert('Digite a descrição do tipo.'); return; }
+  if (STATE.tiposProblema.find(t => t.nome === nome)) { alert('Tipo já existe.'); return; }
+  STATE.tiposProblema.push({cat, nome});
+  salvarTiposProblema();
+  popularSelectTipos();
+  renderTiposLista();
+  document.getElementById('tipo-novo-nome').value = '';
+}
+
+function removerTipo(idx) {
+  if (!confirm(`Remover "${STATE.tiposProblema[idx].nome}"?`)) return;
+  STATE.tiposProblema.splice(idx, 1);
+  salvarTiposProblema();
+  popularSelectTipos();
+  renderTiposLista();
+}
+
+function editarTipo(idx) {
+  const novoNome = prompt('Editar descrição:', STATE.tiposProblema[idx].nome);
+  if (!novoNome || novoNome.trim() === STATE.tiposProblema[idx].nome) return;
+  STATE.tiposProblema[idx].nome = novoNome.trim();
+  salvarTiposProblema();
+  popularSelectTipos();
+  renderTiposLista();
+}
+
+
 // ==================== DASHBOARD ====================
 function loadDashboard() {
   const aqList = STATE.aqList;
@@ -1052,15 +1465,14 @@ function loadDashboard() {
   const closed = aqList.filter(a => a.status === 'Concluído').length;
   const totalCusto = aqList.reduce((s, a) => s + (parseFloat(a.custo) || 0), 0);
 
-  // Count late actions
-  let late = 0;
-  STATE.planoItems && STATE.planoItems.forEach(p => {
-    if (p.prazo && p.status !== 'concluído' && new Date(p.prazo) < today) late++;
-  });
-
-  // From local auditorias plano data - scan all stored
-  const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]');
-  const latePlanos = allPlanos.filter(p => p.status !== 'concluído' && p.prazo && new Date(p.prazo) < today).length;
+  // Ações atrasadas: apenas planos vinculados a AQs que ainda existem
+  const aqNumsExistentes = new Set(aqList.map(a => a.numero));
+  const todayStr = today.toISOString().split('T')[0];
+  const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]')
+    .filter(p => aqNumsExistentes.has(p.aqNumero)); // ignorar planos órfãos
+  const latePlanos = allPlanos.filter(p =>
+    p.status !== 'concluído' && p.prazo && p.prazo < todayStr
+  ).length;
 
   document.getElementById('kpi-aq-open').textContent = open;
   document.getElementById('kpi-aq-closed').textContent = closed;
@@ -1100,8 +1512,16 @@ function renderCharts(aqList) {
   const deptos = ['Oficina','Funilaria','Pneus','Vendas Caminhões','Vendas Vans','Vendas Ônibus','Predial'];
   const deptoCounts = deptos.map(d => aqList.filter(a => a.departamento === d).length);
 
-  // Pareto - top 5 causas (use departamento as proxy if no brainstorm)
-  const sorted = deptos.map((d,i) => ({d, v: deptoCounts[i]})).sort((a,b) => b.v - a.v).slice(0,5);
+  // Pareto — top 5 tipos de problema (campo tipoProblema)
+  const tipoCount = {};
+  aqList.forEach(a => {
+    const t = (a.tipoProblema && a.tipoProblema.trim()) ? a.tipoProblema : (a.origem || 'Sem tipo');
+    tipoCount[t] = (tipoCount[t] || 0) + 1;
+  });
+  const sorted = Object.entries(tipoCount)
+    .map(([d, v]) => ({d, v}))
+    .sort((a,b) => b.v - a.v)
+    .slice(0, 5);
   let cumPct = 0;
   const paretoData = sorted.map(s => s.v);
   const paretoTotal = paretoData.reduce((a,b) => a+b, 0) || 1;
@@ -1126,7 +1546,7 @@ function renderCharts(aqList) {
       plugins: { legend: { labels: { color: '#94a3b8', font:{size:11} } } },
       scales: {
         x: { ticks: { color: '#64748b', font:{size:10} }, grid: { color: '#1e2d45' } },
-        y: { ticks: { color: '#64748b' }, grid: { color: '#1e2d45' } },
+        y: { ticks: { color: '#64748b', precision:0, stepSize:1, callback: v => Number.isInteger(v) ? v : '' }, grid: { color: '#1e2d45' }, beginAtZero:true, min:0, max: Math.max(2, Math.max(...paretoData)+1) },
         y2: { position: 'right', ticks: { color: '#f59e0b', callback: v => v+'%' }, grid: { display:false }, max:100 }
       }
     }
@@ -1169,36 +1589,62 @@ function renderCharts(aqList) {
       plugins: { legend: { labels: { color:'#94a3b8', font:{size:11} } } },
       scales: {
         x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
-        y: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'}, beginAtZero:true }
+        y: {
+          ticks:{ color:'#64748b', precision:0, stepSize:1, callback: v => Number.isInteger(v) ? v : '' },
+          grid:{color:'#1e2d45'}, beginAtZero:true,
+          min: 0, max: Math.max(2, Math.max(...monthCounts) + 1)
+        }
       }
     }
   });
 
-  // Score por unidade
+  // Score por unidade — só mostra unidades com auditorias registradas
   const unidades = ['Sorocaba','Itu','Itapeva'];
-  const scores = unidades.map(u => {
+  const unidadesComDados = unidades.filter(u => STATE.auditorias.some(a => a.unidade === u));
+  const scores = unidadesComDados.map(u => {
     const auds = STATE.auditorias.filter(a => a.unidade === u);
-    if (!auds.length) return 0;
     return Math.round(auds.reduce((s,a) => s+(parseFloat(a.score)||0), 0) / auds.length);
   });
-  STATE.charts.score = new Chart(document.getElementById('chartScore'), {
-    type: 'bar',
-    data: {
-      labels: unidades,
-      datasets: [{ label: 'Score %', data: scores,
-        backgroundColor: ['rgba(0,198,255,0.7)','rgba(16,185,129,0.7)','rgba(139,92,246,0.7)'],
-        borderRadius: 6
-      }]
-    },
-    options: {
-      responsive: true, maintainAspectRatio: true,
-      plugins: { legend: { labels:{color:'#94a3b8', font:{size:11}} } },
-      scales: {
-        x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
-        y: { ticks:{color:'#64748b', callback:v=>v+'%'}, grid:{color:'#1e2d45'}, max:100, beginAtZero:true }
-      }
+  const scoreColors = {
+    'Sorocaba':'rgba(0,198,255,0.75)',
+    'Itu':'rgba(16,185,129,0.75)',
+    'Itapeva':'rgba(139,92,246,0.75)'
+  };
+
+  const scoreCanvas = document.getElementById('chartScore');
+  if (!unidadesComDados.length) {
+    scoreCanvas.style.display = 'none';
+    const parent = scoreCanvas.parentElement;
+    if (!parent.querySelector('.score-empty')) {
+      const msg = document.createElement('div');
+      msg.className = 'score-empty';
+      msg.style.cssText = 'text-align:center;padding:40px 0;color:#475569;font-size:13px;';
+      msg.textContent = 'Nenhuma auditoria registrada ainda.';
+      parent.appendChild(msg);
     }
-  });
+  } else {
+    scoreCanvas.style.display = '';
+    const emptyMsg = scoreCanvas.parentElement.querySelector('.score-empty');
+    if (emptyMsg) emptyMsg.remove();
+    STATE.charts.score = new Chart(scoreCanvas, {
+      type: 'bar',
+      data: {
+        labels: unidadesComDados,
+        datasets: [{ label: 'Score %', data: scores,
+          backgroundColor: unidadesComDados.map(u => scoreColors[u]),
+          borderRadius: 6
+        }]
+      },
+      options: {
+        responsive: true, maintainAspectRatio: true,
+        plugins: { legend: { labels:{color:'#94a3b8', font:{size:11}} } },
+        scales: {
+          x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
+          y: { ticks:{color:'#64748b', callback:v=>v+'%'}, grid:{color:'#1e2d45'}, max:100, beginAtZero:true }
+        }
+      }
+    });
+  }
 
   // CNQ por depto
   const deptoCusto = deptos.map(d => aqList.filter(a=>a.departamento===d).reduce((s,a)=>s+(parseFloat(a.custo)||0),0));
@@ -1236,6 +1682,7 @@ function openAQModal(aq) {
     document.getElementById('aq-unidade').value = aq.unidade;
     document.getElementById('aq-depto').value = aq.departamento;
     document.getElementById('aq-origem').value = aq.origem;
+    document.getElementById('aq-tipo-problema').value = aq.tipoProblema || '';
     document.getElementById('aq-custo').value = aq.custo;
     document.getElementById('aq-tipo-custo').value = aq.tipoCusto;
     document.getElementById('aq-status').value = aq.status;
@@ -1274,6 +1721,7 @@ function saveAQInfo() {
     unidade: document.getElementById('aq-unidade').value,
     departamento: document.getElementById('aq-depto').value,
     origem: document.getElementById('aq-origem').value,
+    tipoProblema: document.getElementById('aq-tipo-problema').value,
     descricao: document.getElementById('aq-descricao').value,
     custo: document.getElementById('aq-custo').value,
     tipoCusto: document.getElementById('aq-tipo-custo').value,
@@ -1313,6 +1761,12 @@ function saveSubData(numero) {
   const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]').filter(p => p.aqNumero !== numero);
   STATE.planoItems.forEach(p => allPlanos.push({...p, aqNumero: numero}));
   localStorage.setItem('sgq_planos', JSON.stringify(allPlanos));
+  // Sync plano de ação to GAS
+  if (STATE.gasUrl) {
+    STATE.planoItems.forEach(p => gasPost('savePlano', {...p, aqNumero: numero}));
+    STATE.brainstormItems.forEach(causa => gasPost('saveBrainstorm', {aqNumero: numero, causa}));
+    STATE.porquesItems.forEach(pq => gasPost('save5Por', {aqNumero: numero, nivel: pq.nivel, pergunta: pq.pergunta, resposta: pq.resposta}));
+  }
 }
 
 function deleteAQ(numero) {
@@ -1478,21 +1932,99 @@ function renderPlano() {
 }
 
 // ==================== AUDITORIAS ====================
-const CHECKLIST_BASE = [
-  'Os processos críticos estão documentados?',
-  'Os colaboradores conhecem os procedimentos operacionais?',
-  'As ferramentas e equipamentos estão calibrados?',
-  'Há registros de não conformidades anteriores tratadas?',
-  'O ambiente de trabalho atende às normas de segurança?',
-  'Os indicadores de qualidade estão sendo monitorados?',
-  'Os treinamentos estão em dia?',
-  'Os POPs estão atualizados e disponíveis?',
-  'As ações do plano de melhoria foram executadas?',
-  'O feedback de clientes está sendo coletado?',
-];
+// ==================== GERENCIAR PERGUNTAS ====================
+function getPerguntas() {
+  const stored = localStorage.getItem('sgq_perguntas');
+  if (stored) return JSON.parse(stored);
+  return [
+    'Os processos críticos estão documentados?',
+    'Os colaboradores conhecem os procedimentos operacionais?',
+    'As ferramentas e equipamentos estão calibrados?',
+    'Há registros de não conformidades anteriores tratadas?',
+    'O ambiente de trabalho atende às normas de segurança?',
+    'Os indicadores de qualidade estão sendo monitorados?',
+    'Os treinamentos estão em dia?',
+    'Os POPs estão atualizados e disponíveis?',
+    'As ações do plano de melhoria foram executadas?',
+    'O feedback de clientes está sendo coletado?',
+  ];
+}
+
+let _perguntasTemp = [];
+
+function openGerenciarPerguntas() {
+  _perguntasTemp = [...getPerguntas()];
+  renderPerguntasList();
+  openModal('modal-perguntas');
+}
+
+function renderPerguntasList() {
+  const container = document.getElementById('perguntas-list');
+  if (!_perguntasTemp.length) {
+    container.innerHTML = '<div style="color:#475569;font-size:13px;text-align:center;padding:20px;">Nenhuma pergunta cadastrada.</div>';
+    return;
+  }
+  container.innerHTML = _perguntasTemp.map((p, i) => `
+    <div style="display:flex;align-items:center;gap:8px;background:var(--mb-card);border:1px solid var(--mb-border);border-radius:8px;padding:10px 12px;">
+      <span style="color:#00c6ff;font-size:12px;font-weight:700;width:22px;flex-shrink:0;">${i+1}.</span>
+      <input type="text" value="${p.replace(/"/g,'&quot;')}" onchange="_perguntasTemp[${i}]=this.value" style="flex:1;background:transparent;border:none;border-bottom:1px solid var(--mb-border);border-radius:0;padding:4px 0;" />
+      <div style="display:flex;gap:4px;flex-shrink:0;">
+        <button class="btn btn-secondary btn-sm" onclick="moverPergunta(${i},-1)" ${i===0?'disabled':''} title="Mover para cima">↑</button>
+        <button class="btn btn-secondary btn-sm" onclick="moverPergunta(${i},1)" ${i===_perguntasTemp.length-1?'disabled':''} title="Mover para baixo">↓</button>
+        <button class="btn btn-danger btn-sm" onclick="removerPergunta(${i})" title="Excluir">✕</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function moverPergunta(idx, dir) {
+  // Read current values from inputs first
+  document.querySelectorAll('#perguntas-list input[type=text]').forEach((inp, i) => {
+    _perguntasTemp[i] = inp.value;
+  });
+  const newIdx = idx + dir;
+  if (newIdx < 0 || newIdx >= _perguntasTemp.length) return;
+  [_perguntasTemp[idx], _perguntasTemp[newIdx]] = [_perguntasTemp[newIdx], _perguntasTemp[idx]];
+  renderPerguntasList();
+}
+
+function removerPergunta(idx) {
+  if (!confirm('Excluir esta pergunta?')) return;
+  document.querySelectorAll('#perguntas-list input[type=text]').forEach((inp, i) => {
+    _perguntasTemp[i] = inp.value;
+  });
+  _perguntasTemp.splice(idx, 1);
+  renderPerguntasList();
+}
+
+function adicionarPergunta() {
+  const input = document.getElementById('nova-pergunta-input');
+  const val = input.value.trim();
+  if (!val) return;
+  // Read current values from inputs first
+  document.querySelectorAll('#perguntas-list input[type=text]').forEach((inp, i) => {
+    _perguntasTemp[i] = inp.value;
+  });
+  _perguntasTemp.push(val);
+  input.value = '';
+  renderPerguntasList();
+}
+
+function salvarPerguntas() {
+  // Read latest values from inputs
+  document.querySelectorAll('#perguntas-list input[type=text]').forEach((inp, i) => {
+    _perguntasTemp[i] = inp.value;
+  });
+  const filtered = _perguntasTemp.filter(p => p.trim());
+  localStorage.setItem('sgq_perguntas', JSON.stringify(filtered));
+  closeModal('modal-perguntas');
+  showToast('Perguntas salvas! (' + filtered.length + ' perguntas)');
+}
+
+const CHECKLIST_BASE = getPerguntas();
 
 function openAudModal() {
-  STATE.checklistItems = CHECKLIST_BASE.map(q => ({ pergunta: q, resposta: '', obs: '' }));
+  STATE.checklistItems = getPerguntas().map(q => ({ pergunta: q, resposta: '', obs: '' }));
   document.getElementById('aud-data').value = new Date().toISOString().split('T')[0];
   showAudTab('dados', null);
   openModal('modal-aud');
@@ -1657,35 +2189,177 @@ function renderProcessos() {
 }
 
 // ==================== POP ====================
+let _currentTipoDoc = 'POP';
+let _popAtividades = []; // [{seq, nome, tarefa, resp}]
+let _itSecoes = [];      // [{titulo, conteudo}]
+
+function setTipoDoc(tipo) {
+  _currentTipoDoc = tipo;
+  document.getElementById('pop-tipo').value = tipo;
+  document.getElementById('pop-fields').style.display = tipo === 'POP' ? '' : 'none';
+  document.getElementById('it-fields').style.display = tipo === 'IT' ? '' : 'none';
+  document.getElementById('btn-tipo-pop').className = tipo === 'POP' ? 'btn btn-primary' : 'btn btn-secondary';
+  document.getElementById('btn-tipo-it').className = tipo === 'IT' ? 'btn btn-primary' : 'btn btn-secondary';
+}
+
+function addAtividade() {
+  _popAtividades.push({ seq: _popAtividades.length + 1, nome: '', tarefa: '', resp: '' });
+  renderAtividades();
+}
+
+function renderAtividades() {
+  const container = document.getElementById('pop-atividades-list');
+  if (!_popAtividades.length) { container.innerHTML = '<div style="color:#475569;font-size:13px;">Nenhuma atividade. Clique em "+ Adicionar Atividade".</div>'; return; }
+  container.innerHTML = _popAtividades.map((a, i) => `
+    <div class="panel" style="padding:14px;margin:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;">
+        <span style="font-weight:700;color:#00c6ff;font-size:14px;">${a.seq}ª Operação</span>
+        <button class="btn btn-danger btn-sm" onclick="_popAtividades.splice(${i},1);_popAtividades.forEach((x,j)=>x.seq=j+1);renderAtividades()">✕</button>
+      </div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label>Nome da Atividade</label>
+          <input type="text" value="${a.nome}" onchange="_popAtividades[${i}].nome=this.value" placeholder="Ex: RECEBER O CLIENTE">
+        </div>
+        <div class="form-group">
+          <label>Responsável</label>
+          <input type="text" value="${a.resp}" onchange="_popAtividades[${i}].resp=this.value" placeholder="Ex: Agendador / Consultor">
+        </div>
+        <div class="form-group full">
+          <label>Tarefa (detalhes das etapas)</label>
+          <textarea onchange="_popAtividades[${i}].tarefa=this.value" placeholder="a) Cumprimentar o cliente pelo nome...&#10;b) Registrar na agenda do consultor..." style="min-height:90px;">${a.tarefa}</textarea>
+        </div>
+      </div>
+    </div>
+  `).join('');
+}
+
+function addSecaoIT() {
+  _itSecoes.push({ titulo: '', conteudo: '' });
+  renderSecoesIT();
+}
+
+function renderSecoesIT() {
+  const container = document.getElementById('it-secoes-list');
+  const startIdx = 3; // sections start at 3 (after Objetivo and Docs Referência)
+  if (!_itSecoes.length) { container.innerHTML = ''; return; }
+  container.innerHTML = _itSecoes.map((s, i) => `
+    <div class="panel" style="padding:14px;margin:0;">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;">
+        <span style="font-weight:700;color:#00c6ff;">${startIdx + i} –</span>
+        <button class="btn btn-danger btn-sm" onclick="_itSecoes.splice(${i},1);renderSecoesIT()">✕</button>
+      </div>
+      <div class="form-group" style="margin-bottom:8px;">
+        <label>Título da Seção</label>
+        <input type="text" value="${s.titulo}" onchange="_itSecoes[${i}].titulo=this.value" placeholder="Ex: TRAJES">
+      </div>
+      <div class="form-group">
+        <label>Conteúdo</label>
+        <textarea onchange="_itSecoes[${i}].conteudo=this.value" placeholder="Descreva o conteúdo desta seção..." style="min-height:80px;">${s.conteudo}</textarea>
+      </div>
+    </div>
+  `).join('');
+}
+
 function openPOPModal(pop, idx) {
+  _popAtividades = [];
+  _itSecoes = [];
+  setTipoDoc('POP');
   if (pop) {
-    document.getElementById('pop-modal-title').textContent = 'Editar POP';
+    document.getElementById('pop-modal-title').textContent = 'Editar ' + pop.tipo;
     document.getElementById('pop-codigo').value = pop.codigo;
     document.getElementById('pop-versao').value = pop.versao;
     document.getElementById('pop-responsavel').value = pop.responsavel;
     document.getElementById('pop-data').value = pop.dataRevisao;
     document.getElementById('pop-processo').value = pop.processo;
-    document.getElementById('pop-conteudo').value = pop.conteudo;
+    document.getElementById('pop-elaborado').value = pop.elaborado || '';
+    document.getElementById('pop-analisado').value = pop.analisado || '';
+    document.getElementById('pop-aprovado').value = pop.aprovado || '';
+    setTipoDoc(pop.tipo || 'POP');
+    if (pop.tipo === 'POP') {
+      document.getElementById('pop-responsaveis-txt').value = pop.responsavelTxt || '';
+      document.getElementById('pop-atividades-resp').value = pop.atividadesResp || '';
+      _popAtividades = pop.atividades ? JSON.parse(JSON.stringify(pop.atividades)) : [];
+      renderAtividades();
+    } else {
+      document.getElementById('it-sistema').value = pop.sistema || '';
+      document.getElementById('it-complementar').value = pop.complementar || '';
+      document.getElementById('it-objetivo').value = pop.objetivo || '';
+      document.getElementById('it-documentos').value = pop.documentos || '';
+      _itSecoes = pop.secoes ? JSON.parse(JSON.stringify(pop.secoes)) : [];
+      renderSecoesIT();
+    }
     window._editPOPIdx = idx;
   } else {
     document.getElementById('pop-modal-title').textContent = 'Novo POP / IT';
-    ['pop-codigo','pop-versao','pop-responsavel','pop-processo','pop-conteudo'].forEach(id => document.getElementById(id).value = '');
+    ['pop-codigo','pop-versao','pop-responsavel','pop-processo','pop-elaborado','pop-analisado','pop-aprovado'].forEach(id => document.getElementById(id).value = '');
     document.getElementById('pop-data').value = new Date().toISOString().split('T')[0];
+    document.getElementById('pop-responsaveis-txt').value = '';
+    document.getElementById('pop-atividades-resp').value = '';
+    document.getElementById('it-sistema').value = '';
+    document.getElementById('it-complementar').value = '';
+    document.getElementById('it-objetivo').value = '';
+    document.getElementById('it-documentos').value = '';
+    renderAtividades();
+    renderSecoesIT();
     window._editPOPIdx = null;
   }
   openModal('modal-pop');
 }
 
-function savePOP() {
-  const p = {
+function collectPOPData() {
+  const tipo = _currentTipoDoc;
+  const base = {
+    tipo,
     codigo: document.getElementById('pop-codigo').value,
     processo: document.getElementById('pop-processo').value,
     versao: document.getElementById('pop-versao').value,
     responsavel: document.getElementById('pop-responsavel').value,
     dataRevisao: document.getElementById('pop-data').value,
-    conteudo: document.getElementById('pop-conteudo').value
+    elaborado: document.getElementById('pop-elaborado').value,
+    analisado: document.getElementById('pop-analisado').value,
+    aprovado: document.getElementById('pop-aprovado').value,
   };
-  if (!p.codigo || !p.processo) { alert('Preencha Código e Processo.'); return; }
+  if (tipo === 'POP') {
+    // Read latest textarea values
+    _popAtividades.forEach((a,i) => {
+      const ta = document.querySelectorAll('#pop-atividades-list textarea')[i];
+      if (ta) a.tarefa = ta.value;
+      const inputs = document.querySelectorAll('#pop-atividades-list .form-group input');
+      // inputs come in pairs per atividade: nome, resp
+    });
+    // Re-read from DOM to be safe
+    const items = document.querySelectorAll('#pop-atividades-list .panel');
+    _popAtividades = Array.from(items).map((panel, i) => {
+      const inputs = panel.querySelectorAll('input');
+      const ta = panel.querySelector('textarea');
+      return { seq: i+1, nome: inputs[0]?.value||'', resp: inputs[1]?.value||'', tarefa: ta?.value||'' };
+    });
+    return { ...base,
+      responsavelTxt: document.getElementById('pop-responsaveis-txt').value,
+      atividadesResp: document.getElementById('pop-atividades-resp').value,
+      atividades: _popAtividades
+    };
+  } else {
+    const secoesItems = document.querySelectorAll('#it-secoes-list .panel');
+    _itSecoes = Array.from(secoesItems).map((panel, i) => {
+      const input = panel.querySelector('input');
+      const ta = panel.querySelector('textarea');
+      return { titulo: input?.value||'', conteudo: ta?.value||'' };
+    });
+    return { ...base,
+      sistema: document.getElementById('it-sistema').value,
+      complementar: document.getElementById('it-complementar').value,
+      objetivo: document.getElementById('it-objetivo').value,
+      documentos: document.getElementById('it-documentos').value,
+      secoes: _itSecoes
+    };
+  }
+}
+
+function savePOP() {
+  const p = collectPOPData();
+  if (!p.codigo || !p.processo) { alert('Preencha Código e Processo/Título.'); return; }
   if (window._editPOPIdx !== null && window._editPOPIdx !== undefined) {
     STATE.popList[window._editPOPIdx] = p;
   } else {
@@ -1695,26 +2369,27 @@ function savePOP() {
   if (STATE.gasUrl) gasPost('savePOP', p);
   closeModal('modal-pop');
   renderPOPTable();
-  showToast('POP salvo!');
+  showToast(p.tipo + ' salvo!');
 }
 
 function renderPOPTable() {
   const tbody = document.getElementById('pop-tbody');
   if (!STATE.popList.length) {
-    tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#475569;padding:32px;">Nenhum POP cadastrado.</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#475569;padding:32px;">Nenhum POP / IT cadastrado.</td></tr>';
     return;
   }
   tbody.innerHTML = STATE.popList.map((p, i) => `
     <tr>
+      <td><span class="badge ${p.tipo==='IT'?'badge-progress':'badge-done'}">${p.tipo||'POP'}</span></td>
       <td><strong style="color:#00c6ff">${p.codigo}</strong></td>
       <td>${p.processo}</td>
-      <td><span class="badge badge-na">v${p.versao}</span></td>
+      <td><span class="badge badge-na">Rev.${p.versao}</span></td>
       <td>${p.responsavel}</td>
       <td>${formatDate(p.dataRevisao)}</td>
       <td>
-        <div style="display:flex;gap:6px;">
-          <button class="btn btn-secondary btn-sm" onclick="openPOPModal(STATE.popList[${i}], ${i})">✏ Editar</button>
-          <button class="btn btn-secondary btn-sm" onclick="newVersionPOP(${i})">⊕ Nova versão</button>
+        <div style="display:flex;gap:6px;flex-wrap:wrap;">
+          <button class="btn btn-secondary btn-sm" onclick="openPOPModal(STATE.popList[${i}], ${i})">✏</button>
+          <button class="btn btn-secondary btn-sm" onclick="downloadWordFromList(${i})">📥 Word</button>
           <button class="btn btn-danger btn-sm" onclick="STATE.popList.splice(${i},1);localStorage.setItem('sgq_pop',JSON.stringify(STATE.popList));renderPOPTable()">✕</button>
         </div>
       </td>
@@ -1729,8 +2404,512 @@ function newVersionPOP(idx) {
   STATE.popList.push(pop);
   localStorage.setItem('sgq_pop', JSON.stringify(STATE.popList));
   renderPOPTable();
-  showToast('Nova versão criada: v' + pop.versao);
+  showToast('Nova versão criada: Rev.' + pop.versao);
 }
+
+function downloadWordFromList(idx) {
+  gerarWordFromData(STATE.popList[idx]);
+}
+
+function gerarWordPOP() {
+  const p = collectPOPData();
+  gerarWordFromData(p);
+}
+
+
+// ====== WORD GENERATION (JSZip raw XML) ======
+
+function escXml(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function makeDocxXml(bodyXml) {
+  return `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:document xmlns:wpc="http://schemas.microsoft.com/office/word/2010/wordprocessingCanvas"
+  xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+  xmlns:o="urn:schemas-microsoft-com:office:office"
+  xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"
+  xmlns:m="http://schemas.openxmlformats.org/officeDocument/2006/math"
+  xmlns:v="urn:schemas-microsoft-com:vml"
+  xmlns:wp14="http://schemas.microsoft.com/office/word/2010/wordprocessingDrawing"
+  xmlns:wp="http://schemas.openxmlformats.org/drawingml/2006/wordprocessingDrawing"
+  xmlns:w10="urn:schemas-microsoft-com:office:word"
+  xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"
+  xmlns:w14="http://schemas.microsoft.com/office/word/2010/wordml"
+  xmlns:wpg="http://schemas.microsoft.com/office/word/2010/wordprocessingGroup"
+  xmlns:wpi="http://schemas.microsoft.com/office/word/2010/wordprocessingInk"
+  xmlns:wne="http://schemas.microsoft.com/office/word/2006/wordml"
+  xmlns:wps="http://schemas.microsoft.com/office/word/2010/wordprocessingShape"
+  mc:Ignorable="w14 wp14">
+  <w:body>
+${bodyXml}
+    <w:sectPr>
+      <w:pgSz w:w="11906" w:h="16838"/>
+      <w:pgMar w:top="720" w:right="720" w:bottom="720" w:left="720" w:header="708" w:footer="708" w:gutter="0"/>
+    </w:sectPr>
+  </w:body>
+</w:document>`;
+}
+
+function wp(text, opts={}) {
+  const bold = opts.bold ? '<w:b/><w:bCs/>' : '';
+  const sz = opts.size || 20;
+  const jc = opts.center ? '<w:jc w:val="center"/>' : (opts.right ? '<w:jc w:val="right"/>' : '');
+  const sp = opts.spaceBefore || opts.spaceAfter ? `<w:spacing${opts.spaceBefore?' w:before="'+opts.spaceBefore+'"':''}${opts.spaceAfter?' w:after="'+opts.spaceAfter+'"':''}/>` : '';
+  return `    <w:p>
+      <w:pPr>${jc}${sp}</w:pPr>
+      <w:r>
+        <w:rPr>${bold}<w:sz w:val="${sz}"/><w:szCs w:val="${sz}"/><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/></w:rPr>
+        <w:t xml:space="preserve">${escXml(text)}</w:t>
+      </w:r>
+    </w:p>`;
+}
+
+function wBorder() {
+  return '<w:tcBorders><w:top w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:left w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:bottom w:val="single" w:sz="4" w:space="0" w:color="000000"/><w:right w:val="single" w:sz="4" w:space="0" w:color="000000"/></w:tcBorders>';
+}
+
+function wCell(content, opts={}) {
+  const w = opts.w ? `<w:tcW w:w="${opts.w}" w:type="dxa"/>` : '<w:tcW w:w="0" w:type="auto"/>';
+  const vAlign = opts.vAlign ? `<w:vAlign w:val="${opts.vAlign}"/>` : '<w:vAlign w:val="center"/>';
+  const shade = opts.shade ? `<w:shd w:val="clear" w:color="auto" w:fill="${opts.shade}"/>` : '';
+  const span = opts.span ? `<w:gridSpan w:val="${opts.span}"/>` : '';
+  const margins = '<w:tcMar><w:top w:w="80" w:type="dxa"/><w:left w:w="120" w:type="dxa"/><w:bottom w:w="80" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>';
+  return `<w:tc><w:tcPr>${w}${span}${wBorder()}${shade}${vAlign}${margins}</w:tcPr>${content}</w:tc>`;
+}
+
+function wRow(cells, opts={}) {
+  const hdr = opts.header ? '<w:tblHeader/>' : '';
+  return `<w:tr><w:trPr>${hdr}</w:trPr>${cells}</w:tr>`;
+}
+
+function wTable(rows, colWidths) {
+  const totalW = colWidths.reduce((a,b)=>a+b,0);
+  const cols = colWidths.map(w => `<w:gridCol w:w="${w}"/>`).join('');
+  return `<w:tbl>
+  <w:tblPr>
+    <w:tblW w:w="${totalW}" w:type="dxa"/>
+    <w:tblBorders><w:insideH w:val="single" w:sz="4" w:color="000000"/><w:insideV w:val="single" w:sz="4" w:color="000000"/></w:tblBorders>
+    <w:tblLook w:val="0000"/>
+  </w:tblPr>
+  <w:tblGrid>${cols}</w:tblGrid>
+  ${rows.join('\n  ')}
+</w:tbl>`;
+}
+
+function buildITDocx(p) {
+  const dataFmt = p.dataRevisao ? p.dataRevisao.split('-').reverse().join('/') : '';
+  const W = 9366;
+  const rows = [];
+
+  // Header row 1
+  rows.push(wRow(
+    wCell(wp(p.sistema||'SISTEMA DE GESTÃO INTEGRADA',{bold:true,center:true,sz:20}),{w:5000,shade:'DDDDDD'}) +
+    wCell(wp('Data:',{bold:true,sz:18}) + wp(dataFmt,{sz:18}),{w:2183}) +
+    wCell(wp('Página:',{bold:true,sz:18}) + wp('1/1',{sz:18}),{w:2183})
+  ));
+  // Header row 2
+  rows.push(wRow(
+    wCell(wp(`INSTRUÇÃO DE TRABALHO – ${(p.processo||'').toUpperCase()}`,{bold:true,center:true,sz:20}),{w:5000,shade:'DDDDDD'}) +
+    wCell(wp(p.codigo||'',{bold:true,sz:18}) + wp('Rev.: '+(p.versao||'0'),{sz:18}),{w:4366,span:2})
+  ));
+  const headerTable = wTable(rows,[5000,2183,2183]);
+
+  // Revision table
+  const revRows = [
+    wRow(wCell(wp('ÍNDICE DE REVISÕES',{bold:true,center:true,sz:20}),{w:W,span:3,shade:'CCCCCC'})),
+    wRow(wCell(wp('Rev.',{bold:true,sz:20}),{w:1500})+wCell(wp('Data',{bold:true,sz:20}),{w:1500})+wCell(wp('Descrição',{bold:true,sz:20}),{w:6366})),
+    wRow(wCell(wp(p.versao||'0',{sz:20}),{w:1500})+wCell(wp(dataFmt,{sz:20}),{w:1500})+wCell(wp('Emissão Inicial',{sz:20}),{w:6366})),
+  ];
+  const revTable = wTable(revRows,[1500,1500,6366]);
+
+  // Body
+  let body = headerTable + '\n' + wp('',{spaceAfter:120}) + '\n' + revTable + '\n' + wp('',{spaceAfter:120});
+  body += '\n' + wp('1  OBJETIVO',{bold:true,sz:22,spaceAfter:60});
+  body += '\n' + wp(p.objetivo||'',{sz:20,spaceAfter:120});
+  body += '\n' + wp('2  DOCUMENTOS DE REFERÊNCIA',{bold:true,sz:22,spaceAfter:60});
+  (p.documentos||'').split('\n').filter(l=>l.trim()).forEach(l => { body += '\n' + wp(l,{sz:20}); });
+
+  (p.secoes||[]).forEach((s,i) => {
+    body += '\n' + wp(`${i+3}  ${(s.titulo||'').toUpperCase()}`,{bold:true,sz:22,spaceBefore:120,spaceAfter:60});
+    (s.conteudo||'').split('\n').filter(l=>l.trim()).forEach(l => { body += '\n' + wp(l,{sz:20}); });
+  });
+
+  // Footer
+  body += '\n' + wp('',{spaceBefore:300});
+  const footerRows = [wRow(
+    wCell(wp('Elaborado por:',{bold:true,sz:18})+wp(p.elaborado||'',{sz:18}),{w:3122}) +
+    wCell(wp('Analisado por:',{bold:true,sz:18})+wp(p.analisado||'',{sz:18}),{w:3122}) +
+    wCell(wp('Aprovado por:',{bold:true,sz:18})+wp(p.aprovado||'',{sz:18}),{w:3122})
+  )];
+  body += '\n' + wTable(footerRows,[3122,3122,3122]);
+  return makeDocxXml(body);
+}
+
+function buildPOPDocx(p) {
+  const dataFmt = p.dataRevisao ? p.dataRevisao.split('-').reverse().join('/') : '';
+  const W = 9366;
+
+  // Header table
+  const hdrRows = [
+    wRow(wCell(wp('POP',{bold:true,sz:20}),{w:1200,shade:'DDDDDD'})+wCell(wp('TITULO: '+(p.processo||''),{bold:true,sz:20}),{w:5766,shade:'DDDDDD'})+wCell(wp('',{sz:20}),{w:2400})),
+    wRow(wCell(wp('N° '+(p.codigo||''),{bold:true,sz:20}),{w:1200,shade:'DDDDDD'})+wCell(wp('Responsável: '+(p.responsavel||''),{bold:true,sz:20}),{w:5766,shade:'DDDDDD'})+wCell(wp('Rev.0  Data: '+dataFmt,{sz:18}),{w:2400})),
+  ];
+  const headerTable = wTable(hdrRows,[1200,5766,2400]);
+
+  // Responsáveis
+  const respLines = (p.responsavelTxt||'').split('\n').filter(l=>l.trim());
+  const atividadeRespLines = (p.atividadesResp||'').split('\n').filter(l=>l.trim());
+  let respContent = wp('1. Responsáveis.',{bold:true,sz:22,spaceAfter:60});
+  if (respLines.length) respContent += '\n' + wp('• '+respLines.join(' / ')+':',{bold:true,sz:20});
+  atividadeRespLines.forEach(l => { respContent += '\n' + wp('    - '+l,{sz:20}); });
+  const respRows = [wRow(wCell(respContent,{w:W}))];
+  const respTable = wTable(respRows,[W]);
+
+  // Activity section title
+  const descRows = [wRow(wCell(wp('2. Descritivo da Atividade:',{bold:true,sz:22}),{w:W}))];
+  const descTable = wTable(descRows,[W]);
+
+  // Activities table
+  const colW = [1200,2400,4566,1200];
+  const actRows = [
+    wRow(
+      wCell(wp('Seq.',{bold:true,center:true,sz:18}),{w:colW[0],shade:'CCCCCC'})+
+      wCell(wp('ATIVIDADE',{bold:true,center:true,sz:18}),{w:colW[1],shade:'CCCCCC'})+
+      wCell(wp('TAREFA',{bold:true,center:true,sz:18}),{w:colW[2],shade:'CCCCCC'})+
+      wCell(wp('RESP.',{bold:true,center:true,sz:18}),{w:colW[3],shade:'CCCCCC'})
+    , {header:true})
+  ];
+  (p.atividades||[]).forEach(a => {
+    const tarefaXml = (a.tarefa||'').split('\n').filter(l=>l.trim()).map(l=>wp(l,{sz:18})).join('\n') || wp('',{sz:18});
+    actRows.push(wRow(
+      wCell(wp(a.seq+'ª',{bold:true,center:true,sz:20}),{w:colW[0]})+
+      wCell(wp(a.nome||'',{bold:true,center:true,sz:20}),{w:colW[1]})+
+      wCell(tarefaXml,{w:colW[2],vAlign:'top'})+
+      wCell(wp(a.resp||'',{center:true,sz:18}),{w:colW[3]})
+    ));
+  });
+  const actTable = wTable(actRows,colW);
+
+  // Footer table
+  const footerRows = [wRow(
+    wCell(wp('Elaborado por:',{bold:true,sz:18})+wp(p.elaborado||'',{sz:18}),{w:3122})+
+    wCell(wp('Rev.0  Data: '+dataFmt,{bold:true,sz:18}),{w:3122})+
+    wCell(wp('Aprovado por:',{bold:true,sz:18})+wp(p.aprovado||'',{sz:18}),{w:3122})
+  )];
+  const footerTable = wTable(footerRows,[3122,3122,3122]);
+
+  const body = headerTable+'\n'+wp('',{spaceAfter:120})+'\n'+respTable+'\n'+wp('',{spaceAfter:120})+'\n'+descTable+'\n'+wp('',{spaceAfter:80})+'\n'+actTable+'\n'+wp('',{spaceBefore:300})+'\n'+footerTable;
+  return makeDocxXml(body);
+}
+
+async function gerarWordFromData(p) {
+  try {
+    const docXml = p.tipo === 'IT' ? buildITDocx(p) : buildPOPDocx(p);
+
+    const zip = new JSZip();
+
+    // [Content_Types].xml
+    zip.file('[Content_Types].xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">
+  <Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>
+  <Default Extension="xml" ContentType="application/xml"/>
+  <Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>
+  <Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>
+  <Override PartName="/word/settings.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.settings+xml"/>
+</Types>`);
+
+    // _rels/.rels
+    zip.file('_rels/.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>
+</Relationships>`);
+
+    // word/_rels/document.xml.rels
+    zip.file('word/_rels/document.xml.rels', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">
+  <Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>
+  <Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/settings" Target="settings.xml"/>
+</Relationships>`);
+
+    // word/styles.xml (minimal)
+    zip.file('word/styles.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:docDefaults>
+    <w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial"/><w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:rPrDefault>
+    <w:pPrDefault><w:pPr><w:spacing w:after="0" w:line="240" w:lineRule="auto"/></w:pPr></w:pPrDefault>
+  </w:docDefaults>
+</w:styles>`);
+
+    // word/settings.xml
+    zip.file('word/settings.xml', `<?xml version="1.0" encoding="UTF-8" standalone="yes"?>
+<w:settings xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+  <w:defaultTabStop w:val="708"/>
+</w:settings>`);
+
+    // word/document.xml
+    zip.file('word/document.xml', docXml);
+
+    const blob = await zip.generateAsync({type:'blob', mimeType:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'});
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `${p.tipo||'POP'}-${p.codigo||'documento'}.docx`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    showToast(`${p.tipo||'POP'} exportado com sucesso!`);
+  } catch(err) {
+    console.error('Erro ao gerar Word:', err);
+    alert('Erro ao gerar o arquivo Word: ' + err.message);
+  }
+}
+
+// ==================== EXPORT PAGE ====================
+function loadExportPage() {
+  // KPI summary
+  const kpiGrid = document.getElementById('export-kpis');
+  const counts = [
+    {label:'Alertas de Qualidade', val: STATE.aqList.length, color:'#ef4444'},
+    {label:'Auditorias', val: STATE.auditorias.length, color:'#10b981'},
+    {label:'POPs / ITs', val: STATE.popList.length, color:'#00c6ff'},
+    {label:'Processos', val: STATE.processosList.length, color:'#8b5cf6'},
+    {label:'Ações no Plano', val: JSON.parse(localStorage.getItem('sgq_planos')||'[]').length, color:'#f59e0b'},
+    {label:'Perguntas Checklist', val: getPerguntas().length, color:'#ec4899'},
+  ];
+  kpiGrid.innerHTML = counts.map(c => `
+    <div class="kpi-card" style="--accent-color:${c.color}">
+      <div class="kpi-label">${c.label}</div>
+      <div class="kpi-value" style="color:${c.color}">${c.val}</div>
+      <div class="kpi-sub">registros</div>
+    </div>`).join('');
+  loadExportPOPList();
+}
+
+function loadExportPOPList() {
+  const container = document.getElementById('export-pop-list');
+  if (!STATE.popList.length) {
+    container.innerHTML = '<div style="color:#475569;font-size:13px;text-align:center;padding:12px;">Nenhum POP/IT cadastrado.</div>';
+    return;
+  }
+  container.innerHTML = STATE.popList.map((p,i) => `
+    <div style="display:flex;align-items:center;justify-content:space-between;background:var(--mb-card);border:1px solid var(--mb-border);border-radius:8px;padding:8px 12px;">
+      <div>
+        <span class="badge ${p.tipo==='IT'?'badge-progress':'badge-done'}" style="margin-right:8px;">${p.tipo}</span>
+        <span style="font-size:13px;color:#e2e8f0;">${p.codigo} – ${p.processo}</span>
+      </div>
+      <button class="btn btn-secondary btn-sm" onclick="gerarWordFromData(STATE.popList[${i}])">📥 Word</button>
+    </div>
+  `).join('');
+}
+
+// ---- Excel exports ----
+function exportarExcelCompleto() {
+  if (!window.XLSX) { alert('Biblioteca XLSX não carregada. Tente novamente.'); return; }
+  const wb = XLSX.utils.book_new();
+  appendSheetAQ(wb);
+  appendSheetPlanoAcao(wb);
+  appendSheetAuditorias(wb);
+  appendSheetPOP(wb);
+  appendSheetProcessos(wb);
+  XLSX.writeFile(wb, `SGQ_Completo_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('Excel completo exportado!');
+}
+
+function exportarExcelAQ() {
+  if (!window.XLSX) { alert('Biblioteca XLSX não carregada.'); return; }
+  const wb = XLSX.utils.book_new();
+  appendSheetAQ(wb);
+  XLSX.writeFile(wb, `SGQ_AQ_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('Alertas de Qualidade exportados!');
+}
+
+function exportarExcelAuditorias() {
+  if (!window.XLSX) { alert('Biblioteca XLSX não carregada.'); return; }
+  const wb = XLSX.utils.book_new();
+  appendSheetAuditorias(wb);
+  XLSX.writeFile(wb, `SGQ_Auditorias_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('Auditorias exportadas!');
+}
+
+function exportarExcelPOP() {
+  if (!window.XLSX) { alert('Biblioteca XLSX não carregada.'); return; }
+  const wb = XLSX.utils.book_new();
+  appendSheetPOP(wb);
+  XLSX.writeFile(wb, `SGQ_POPs_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('POPs/ITs exportados!');
+}
+
+function appendSheetAQ(wb) {
+  const rows = [['Nº AQ','Data','Unidade','Departamento','Origem','Descrição','Custo R$','Tipo Custo','Status']];
+  STATE.aqList.forEach(a => rows.push([a.numero,a.data,a.unidade,a.departamento,a.origem,a.descricao,parseFloat(a.custo||0),a.tipoCusto,a.status]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:14},{wch:12},{wch:12},{wch:16},{wch:10},{wch:50},{wch:12},{wch:18},{wch:14}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Alertas de Qualidade');
+}
+
+function appendSheetAuditorias(wb) {
+  const rows = [['Data','Unidade','Área','Auditor','Score %','OK','NOK','N/A','Total']];
+  STATE.auditorias.forEach(a => rows.push([a.data,a.unidade,a.area,a.auditor,a.score,a.ok,a.nok,a.na,a.total]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:12},{wch:12},{wch:18},{wch:20},{wch:10},{wch:8},{wch:8},{wch:8},{wch:8}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Auditorias');
+}
+
+function appendSheetPOP(wb) {
+  const rows = [['Tipo','Código','Processo/Título','Revisão','Responsável','Data Revisão','Elaborado por','Aprovado por']];
+  STATE.popList.forEach(p => rows.push([p.tipo,p.codigo,p.processo,p.versao,p.responsavel,p.dataRevisao,p.elaborado,p.aprovado]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:6},{wch:14},{wch:40},{wch:8},{wch:20},{wch:12},{wch:20},{wch:20}];
+  XLSX.utils.book_append_sheet(wb, ws, 'POPs e ITs');
+}
+
+function appendSheetProcessos(wb) {
+  const rows = [['Nome','Descrição','Etapas']];
+  STATE.processosList.forEach(p => rows.push([p.nome,p.descricao,p.etapas]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:30},{wch:40},{wch:60}];
+  XLSX.utils.book_append_sheet(wb, ws, 'Processos');
+}
+
+function appendSheetPlanoAcao(wb) {
+  const rows = [['Nº AQ','Ação','Responsável','Prazo','Status']];
+  // Consolidate from sgq_planos (global store across all AQs)
+  const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]');
+  // Also include any planos stored per-AQ that may not be in the global list
+  const aqNums = new Set(allPlanos.map(p => p.aqNumero));
+  STATE.aqList.forEach(aq => {
+    if (!aqNums.has(aq.numero)) {
+      const stored = JSON.parse(localStorage.getItem('sgq_aq_data_' + aq.numero) || '{}');
+      (stored.plano || []).forEach(p => allPlanos.push({...p, aqNumero: aq.numero}));
+    }
+  });
+  allPlanos.forEach(p => rows.push([
+    p.aqNumero || '',
+    p.acao || '',
+    p.responsavel || '',
+    p.prazo || '',
+    p.status || ''
+  ]));
+  const ws = XLSX.utils.aoa_to_sheet(rows);
+  ws['!cols'] = [{wch:16},{wch:50},{wch:20},{wch:12},{wch:14}];
+  // Color coding for status
+  XLSX.utils.book_append_sheet(wb, ws, 'Plano de Ação');
+}
+
+function exportarExcelPlano() {
+  if (!window.XLSX) { alert('Biblioteca XLSX não carregada.'); return; }
+  const wb = XLSX.utils.book_new();
+  appendSheetPlanoAcao(wb);
+  XLSX.writeFile(wb, `SGQ_PlanoAcao_${new Date().toISOString().split('T')[0]}.xlsx`);
+  showToast('Plano de Ação exportado!');
+}
+
+// ---- CSV ----
+function exportarCSV(tipo) {
+  let csv = '', filename = '';
+  if (tipo === 'aq') {
+    csv = 'Nº AQ,Data,Unidade,Departamento,Origem,Descrição,Custo R$,Tipo Custo,Status\n';
+    STATE.aqList.forEach(a => { csv += [a.numero,a.data,a.unidade,a.departamento,a.origem,a.tipoProblema||'',`"${(a.descricao||'').replace(/"/g,'""')}"`,a.custo||0,a.tipoCusto,a.status].join(',') + '\n'; });
+    filename = 'SGQ_AQ';
+  } else if (tipo === 'auditorias') {
+    csv = 'Data,Unidade,Área,Auditor,Score%,OK,NOK,NA\n';
+    STATE.auditorias.forEach(a => { csv += [a.data,a.unidade,a.area,a.auditor,a.score,a.ok,a.nok,a.na].join(',') + '\n'; });
+    filename = 'SGQ_Auditorias';
+  } else if (tipo === 'pop') {
+    csv = 'Tipo,Código,Processo,Revisão,Responsável,Data\n';
+    STATE.popList.forEach(p => { csv += [p.tipo,p.codigo,`"${(p.processo||'').replace(/"/g,'""')}"`,p.versao,p.responsavel,p.dataRevisao].join(',') + '\n'; });
+    filename = 'SGQ_POPs';
+  } else if (tipo === 'plano') {
+    csv = 'Nº AQ,Ação,Responsável,Prazo,Status\n';
+    const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]');
+    STATE.aqList.forEach(aq => {
+      const stored = JSON.parse(localStorage.getItem('sgq_aq_data_' + aq.numero) || '{}');
+      (stored.plano || []).forEach(p => {
+        if (!allPlanos.find(ap => ap.aqNumero === aq.numero && ap.acao === p.acao))
+          allPlanos.push({...p, aqNumero: aq.numero});
+      });
+    });
+    allPlanos.forEach(p => { csv += [p.aqNumero||'',`"${(p.acao||'').replace(/"/g,'""')}"`,p.responsavel||'',p.prazo||'',p.status||''].join(',') + '\n'; });
+    filename = 'SGQ_PlanoAcao';
+  }
+  const blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8;'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename+'_'+new Date().toISOString().split('T')[0]+'.csv';
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('CSV exportado!');
+}
+
+// ---- JSON backup / restore ----
+function exportarJSON() {
+  const backup = {
+    versao: '1.0',
+    exportadoEm: new Date().toISOString(),
+    dados: {
+      aqList: STATE.aqList,
+      auditorias: STATE.auditorias,
+      popList: STATE.popList,
+      processosList: STATE.processosList,
+      perguntas: getPerguntas(),
+      planos: JSON.parse(localStorage.getItem('sgq_planos') || '[]'),
+    }
+  };
+  const blob = new Blob([JSON.stringify(backup, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `SGQ_Backup_${new Date().toISOString().split('T')[0]}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  showToast('Backup JSON exportado com sucesso!');
+}
+
+function restaurarJSON(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    try {
+      const backup = JSON.parse(e.target.result);
+      const d = backup.dados || backup;
+      if (!confirm(`Restaurar backup de ${backup.exportadoEm || 'data desconhecida'}?\n\nIsso irá SUBSTITUIR todos os dados atuais.`)) return;
+      if (d.aqList) { STATE.aqList = d.aqList; localStorage.setItem('sgq_aq', JSON.stringify(d.aqList)); }
+      if (d.auditorias) { STATE.auditorias = d.auditorias; localStorage.setItem('sgq_auditorias', JSON.stringify(d.auditorias)); }
+      if (d.popList) { STATE.popList = d.popList; localStorage.setItem('sgq_pop', JSON.stringify(d.popList)); }
+      if (d.processosList) { STATE.processosList = d.processosList; localStorage.setItem('sgq_processos', JSON.stringify(d.processosList)); }
+      if (d.perguntas) { localStorage.setItem('sgq_perguntas', JSON.stringify(d.perguntas)); }
+      if (d.planos) { localStorage.setItem('sgq_planos', JSON.stringify(d.planos)); }
+      loadExportPage();
+      showToast('Backup restaurado com sucesso!');
+    } catch(err) {
+      alert('Erro ao restaurar backup: ' + err.message);
+    }
+  };
+  reader.readAsText(file);
+  event.target.value = '';
+}
+
+function limparTodosDados() {
+  if (!confirm('⚠️ ATENÇÃO: Esta ação irá apagar TODOS os dados do sistema permanentemente.\n\nTem certeza?')) return;
+  if (!confirm('Confirmar exclusão de todos os dados? Esta ação não pode ser desfeita.')) return;
+
+  // Varrer e remover TODAS as chaves sgq_* (inclui sgq_planos e sgq_aq_data_*)
+  const toRemove = [];
+  for (let i = 0; i < localStorage.length; i++) {
+    const k = localStorage.key(i);
+    if (k && k.startsWith('sgq_')) toRemove.push(k);
+  }
+  toRemove.forEach(k => localStorage.removeItem(k));
+
+  STATE.aqList = []; STATE.auditorias = []; STATE.popList = [];
+  STATE.processosList = []; STATE.planoItems = [];
+  refreshDashboard();
+  loadExportPage();
+  showToast('Todos os dados foram removidos.');
+}
+
 
 // ==================== INDICADORES ====================
 function loadIndicadores() {
@@ -1808,29 +2987,76 @@ function saveConfig() {
   setTimeout(() => document.getElementById('config-status').textContent = '', 3000);
 }
 
+async function syncCompleto() {
+  if (!STATE.gasUrl) { alert('Configure a URL do GAS primeiro.'); return; }
+  const statusEl = document.getElementById('config-status');
+  statusEl.textContent = '⟳ Sincronizando todos os dados...';
+  statusEl.style.color = '#94a3b8';
+  let count = 0;
+  try {
+    // Sync AQs
+    for (const aq of STATE.aqList) {
+      await gasPost('saveAQ', aq);
+      count++;
+      // Sync sub-data per AQ
+      const stored = JSON.parse(localStorage.getItem('sgq_aq_data_' + aq.numero) || '{}');
+      for (const causa of (stored.brainstorm || [])) { await gasPost('saveBrainstorm', {aqNumero: aq.numero, causa}); count++; }
+      for (const pq of (stored.porques || [])) { await gasPost('save5Por', {...pq, aqNumero: aq.numero}); count++; }
+      for (const p of (stored.plano || [])) { await gasPost('savePlano', {...p, aqNumero: aq.numero}); count++; }
+      const ishi = stored.ishikawa || {};
+      for (const cat of Object.keys(ishi)) {
+        for (const causa of (ishi[cat] || [])) { await gasPost('saveIshikawa', {aqNumero: aq.numero, categoria: cat, causa}); count++; }
+      }
+    }
+    // Sync auditorias
+    for (const a of STATE.auditorias) { await gasPost('saveAuditoria', a); count++; }
+    // Sync POPs
+    for (const p of STATE.popList) { await gasPost('savePOP', {codigo:p.codigo, processo:p.processo, versao:p.versao, responsavel:p.responsavel, dataRevisao:p.dataRevisao, tipo:p.tipo}); count++; }
+    // Sync processos
+    for (const p of STATE.processosList) { await gasPost('saveProcesso', p); count++; }
+    statusEl.textContent = `✓ Sincronização completa! ${count} registros enviados.`;
+    statusEl.style.color = '#34d399';
+    showToast(`Sincronização concluída: ${count} registros!`);
+  } catch(e) {
+    statusEl.textContent = '✗ Erro na sincronização: ' + e.message;
+    statusEl.style.color = '#f87171';
+  }
+}
+
 async function testConnection() {
   const url = document.getElementById('gas-url').value.trim();
   if (!url) { alert('Informe a URL do GAS primeiro.'); return; }
-  document.getElementById('config-status').textContent = '🔌 Testando...';
-  document.getElementById('config-status').style.color = '#94a3b8';
+  const statusEl = document.getElementById('config-status');
+  statusEl.textContent = '🔌 Testando conexão...';
+  statusEl.style.color = '#94a3b8';
   try {
-    const res = await fetch(url + '?sheet=AQ');
-    const data = await res.json();
-    document.getElementById('config-status').textContent = '✓ Conexão OK! Registros: ' + (data.data?.length || 0);
-    document.getElementById('config-status').style.color = '#34d399';
+    // GAS GET supports CORS - use it to test connectivity
+    const res = await fetch(url + '?action=ping', { method: 'GET' });
+    const text = await res.text();
+    let msg = '✓ Conexão OK!';
+    try {
+      const json = JSON.parse(text);
+      if (json.data) msg = `✓ Conexão OK! AQs: ${json.data.length}`;
+      else if (json.pong) msg = '✓ Conexão OK! GAS respondendo.';
+    } catch(_) {}
+    statusEl.textContent = msg;
+    statusEl.style.color = '#34d399';
   } catch(e) {
-    document.getElementById('config-status').textContent = '✗ Erro: ' + e.message;
-    document.getElementById('config-status').style.color = '#f87171';
+    statusEl.textContent = '✗ Erro: ' + e.message + ' — Verifique se a URL está correta e o Web App está publicado como "Qualquer pessoa".';
+    statusEl.style.color = '#f87171';
   }
 }
 
 async function gasPost(action, data) {
   if (!STATE.gasUrl) return;
   try {
+    // GAS doesn't support CORS preflight - use no-cors with text/plain
+    // This avoids the OPTIONS preflight that blocks application/json
     await fetch(STATE.gasUrl, {
       method: 'POST',
-      body: JSON.stringify({ action, data }),
-      headers: { 'Content-Type': 'application/json' }
+      mode: 'no-cors',
+      headers: { 'Content-Type': 'text/plain' },
+      body: JSON.stringify({ action, data })
     });
   } catch(e) {
     console.warn('GAS sync error:', e);
