@@ -1294,7 +1294,7 @@ const STATE = {
 };
 
 // ==================== INIT ====================
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   updateClock();
   setInterval(updateClock, 1000);
   document.getElementById('gas-url').value = STATE.gasUrl;
@@ -1310,9 +1310,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   initPorques();
   popularSelectTipos();
 
-  // Se tiver URL do GAS configurada, carrega dados da planilha ao abrir
+  // Carrega dados da planilha ao abrir (se GAS configurado)
   if (STATE.gasUrl) {
-    await syncFromGAS();
+    syncFromGAS().then(() => {
+      document.getElementById('aq-numero').value = 'AQ-' + new Date().getFullYear() + '-' + String(STATE.aqList.length + 1).padStart(3,'0');
+      loadDashboard();
+    });
+    return;
   }
 
   // Auto-generate AQ number
@@ -1801,11 +1805,15 @@ function saveSubData(numero) {
   const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]').filter(p => p.aqNumero !== numero);
   STATE.planoItems.forEach(p => allPlanos.push({...p, aqNumero: numero}));
   localStorage.setItem('sgq_planos', JSON.stringify(allPlanos));
-  // Sync plano de ação to GAS
+  // Sync todos os dados para o GAS
   if (STATE.gasUrl) {
     STATE.planoItems.forEach(p => gasPost('savePlano', {...p, aqNumero: numero}));
     STATE.brainstormItems.forEach(causa => gasPost('saveBrainstorm', {aqNumero: numero, causa}));
     STATE.porquesItems.forEach(pq => gasPost('save5Por', {aqNumero: numero, nivel: pq.nivel, pergunta: pq.pergunta, resposta: pq.resposta}));
+    // Sync Ishikawa
+    Object.keys(STATE.ishikawaItems).forEach(cat => {
+      (STATE.ishikawaItems[cat] || []).forEach(causa => gasPost('saveIshikawa', {aqNumero: numero, categoria: cat, causa}));
+    });
   }
 }
 
@@ -2945,7 +2953,7 @@ function limparTodosDados() {
 
   STATE.aqList = []; STATE.auditorias = []; STATE.popList = [];
   STATE.processosList = []; STATE.planoItems = [];
-  refreshDashboard();
+  loadDashboard();
   loadExportPage();
   showToast('Todos os dados foram removidos.');
 }
