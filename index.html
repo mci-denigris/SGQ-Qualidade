@@ -312,7 +312,29 @@
   <div id="page-dashboard" class="page active fade-in">
     <div class="section-header">
       <div class="section-title">Dashboard Executivo</div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;">
+        <!-- Period filter -->
+        <div style="display:flex;align-items:center;gap:6px;background:var(--mb-card);border:1px solid var(--mb-border);border-radius:8px;padding:4px 10px;">
+          <span style="font-size:11px;color:#64748b;font-weight:600;text-transform:uppercase;letter-spacing:.5px;white-space:nowrap;">📅 Período</span>
+          <select id="dash-periodo" onchange="applyDashPeriod()" style="background:transparent;border:none;color:#e2e8f0;font-size:13px;font-weight:600;padding:4px 4px;cursor:pointer;outline:none;min-width:120px;">
+            <option value="thisMonth">Este mês</option>
+            <option value="lastMonth">Mês anterior</option>
+            <option value="last3">Últimos 3 meses</option>
+            <option value="last6">Últimos 6 meses</option>
+            <option value="thisYear" selected>Este ano</option>
+            <option value="lastYear">Ano anterior</option>
+            <option value="allTime">Todo o período</option>
+            <option value="custom">Personalizado…</option>
+          </select>
+        </div>
+        <!-- Custom date range (hidden by default) -->
+        <div id="dash-custom-range" style="display:none;align-items:center;gap:6px;background:var(--mb-card);border:1px solid var(--mb-border);border-radius:8px;padding:4px 10px;">
+          <input type="date" id="dash-date-from" onchange="applyDashPeriod()" style="background:transparent;border:none;color:#e2e8f0;font-size:13px;padding:4px;width:140px;">
+          <span style="color:#64748b;font-size:12px;">até</span>
+          <input type="date" id="dash-date-to" onchange="applyDashPeriod()" style="background:transparent;border:none;color:#e2e8f0;font-size:13px;padding:4px;width:140px;">
+        </div>
+        <!-- Period badge showing selected range -->
+        <span id="dash-period-label" style="font-size:11px;color:#00c6ff;background:rgba(0,198,255,0.1);border:1px solid rgba(0,198,255,0.2);border-radius:99px;padding:3px 10px;white-space:nowrap;"></span>
         <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Atualizar</button>
         <button class="btn btn-secondary btn-sm" onclick="showPage('config', document.querySelector('[onclick*=config]'))">⚙ Configurar Sheets</button>
       </div>
@@ -1501,19 +1523,94 @@ function editarTipo(idx) {
 
 
 // ==================== DASHBOARD ====================
+// ==================== PERIOD FILTER ====================
+function getDashPeriodRange() {
+  const periodo = document.getElementById('dash-periodo') ? document.getElementById('dash-periodo').value : 'thisYear';
+  const today = new Date();
+  let from, to;
+
+  if (periodo === 'thisMonth') {
+    from = new Date(today.getFullYear(), today.getMonth(), 1);
+    to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  } else if (periodo === 'lastMonth') {
+    from = new Date(today.getFullYear(), today.getMonth() - 1, 1);
+    to = new Date(today.getFullYear(), today.getMonth(), 0);
+  } else if (periodo === 'last3') {
+    from = new Date(today.getFullYear(), today.getMonth() - 2, 1);
+    to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  } else if (periodo === 'last6') {
+    from = new Date(today.getFullYear(), today.getMonth() - 5, 1);
+    to = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+  } else if (periodo === 'thisYear') {
+    from = new Date(today.getFullYear(), 0, 1);
+    to = new Date(today.getFullYear(), 11, 31);
+  } else if (periodo === 'lastYear') {
+    from = new Date(today.getFullYear() - 1, 0, 1);
+    to = new Date(today.getFullYear() - 1, 11, 31);
+  } else if (periodo === 'allTime') {
+    from = new Date('2000-01-01');
+    to = new Date('2099-12-31');
+  } else if (periodo === 'custom') {
+    const f = document.getElementById('dash-date-from').value;
+    const t = document.getElementById('dash-date-to').value;
+    from = f ? new Date(f) : new Date('2000-01-01');
+    to = t ? new Date(t) : new Date('2099-12-31');
+  }
+  return { from, to };
+}
+
+function applyDashPeriod() {
+  const periodo = document.getElementById('dash-periodo').value;
+  const customDiv = document.getElementById('dash-custom-range');
+  customDiv.style.display = periodo === 'custom' ? 'flex' : 'none';
+
+  const { from, to } = getDashPeriodRange();
+  const fmtDate = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'short', year:'numeric'});
+  const labelEl = document.getElementById('dash-period-label');
+  if (periodo === 'allTime') {
+    labelEl.textContent = 'Todo o período';
+  } else {
+    labelEl.textContent = fmtDate(from) + ' – ' + fmtDate(to);
+  }
+
+  loadDashboard();
+}
+
+function filterAQByPeriod(aqList) {
+  const { from, to } = getDashPeriodRange();
+  const fromStr = from.toISOString().split('T')[0];
+  const toStr = to.toISOString().split('T')[0];
+  return aqList.filter(a => {
+    if (!a.data) return false;
+    return a.data >= fromStr && a.data <= toStr;
+  });
+}
+
 function loadDashboard() {
-  const aqList = STATE.aqList;
+  // Initialize period label on first load
+  const labelEl = document.getElementById('dash-period-label');
+  if (labelEl && !labelEl.textContent) {
+    const today = new Date();
+    const from = new Date(today.getFullYear(), 0, 1);
+    const to = new Date(today.getFullYear(), 11, 31);
+    const fmtDate = d => d.toLocaleDateString('pt-BR', {day:'2-digit', month:'short', year:'numeric'});
+    labelEl.textContent = fmtDate(from) + ' – ' + fmtDate(to);
+  }
+
+  const allAQ = STATE.aqList;
+  const aqList = filterAQByPeriod(allAQ); // filtered by period
   const today = new Date();
 
+  // KPIs use period-filtered list
   const open = aqList.filter(a => a.status === 'Aberto' || a.status === 'Em Andamento').length;
   const closed = aqList.filter(a => a.status === 'Concluído').length;
   const totalCusto = aqList.reduce((s, a) => s + (parseFloat(a.custo) || 0), 0);
 
-  // Ações atrasadas: apenas planos vinculados a AQs que ainda existem
-  const aqNumsExistentes = new Set(aqList.map(a => a.numero));
+  // Ações atrasadas: baseadas no período atual (não filtrado por data de AQ)
+  const aqNumsExistentes = new Set(allAQ.map(a => a.numero));
   const todayStr = today.toISOString().split('T')[0];
   const allPlanos = JSON.parse(localStorage.getItem('sgq_planos') || '[]')
-    .filter(p => aqNumsExistentes.has(p.aqNumero)); // ignorar planos órfãos
+    .filter(p => aqNumsExistentes.has(p.aqNumero));
   const latePlanos = allPlanos.filter(p =>
     p.status !== 'concluído' && p.prazo && p.prazo < todayStr
   ).length;
@@ -1548,7 +1645,22 @@ function calcTempoMedio(list) {
 
 function renderCharts(aqList) {
   const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
-  const curYear = new Date().getFullYear();
+  const { from, to } = getDashPeriodRange();
+
+  // Build dynamic month labels for the period
+  const periodMonths = [];
+  const periodLabels = [];
+  let cur = new Date(from.getFullYear(), from.getMonth(), 1);
+  const toMonth = new Date(to.getFullYear(), to.getMonth(), 1);
+  while (cur <= toMonth) {
+    periodMonths.push({ year: cur.getFullYear(), month: cur.getMonth() });
+    periodLabels.push(months[cur.getMonth()] + (cur.getFullYear() !== from.getFullYear() || from.getFullYear() !== to.getFullYear() ? '/' + String(cur.getFullYear()).slice(2) : ''));
+    cur = new Date(cur.getFullYear(), cur.getMonth() + 1, 1);
+  }
+  // Limit to max 24 months for readability
+  const maxMonths = 24;
+  const slicedMonths = periodMonths.length > maxMonths ? periodMonths.slice(-maxMonths) : periodMonths;
+  const slicedLabels = periodLabels.length > maxMonths ? periodLabels.slice(-maxMonths) : periodLabels;
 
   // Destroy old charts
   Object.values(STATE.charts).forEach(c => { if (c) c.destroy(); });
@@ -1612,17 +1724,17 @@ function renderCharts(aqList) {
   });
 
   // Tendência mensal
-  const monthCounts = Array(12).fill(0);
-  aqList.forEach(a => {
-    if (a.data) {
+  const monthCounts = slicedMonths.map(m => 
+    aqList.filter(a => {
+      if (!a.data) return false;
       const d = new Date(a.data);
-      if (d.getFullYear() === curYear) monthCounts[d.getMonth()]++;
-    }
-  });
+      return d.getFullYear() === m.year && d.getMonth() === m.month;
+    }).length
+  );
   STATE.charts.trend = new Chart(document.getElementById('chartTrend'), {
     type: 'line',
     data: {
-      labels: months,
+      labels: slicedLabels,
       datasets: [{ label: 'AQ', data: monthCounts,
         borderColor: '#00c6ff', backgroundColor: 'rgba(0,198,255,0.08)',
         fill: true, tension: 0.4, pointBackgroundColor: '#00c6ff', pointRadius: 4
@@ -1632,7 +1744,7 @@ function renderCharts(aqList) {
       responsive: true, maintainAspectRatio: true,
       plugins: { legend: { labels: { color:'#94a3b8', font:{size:11} } } },
       scales: {
-        x: { ticks:{color:'#64748b'}, grid:{color:'#1e2d45'} },
+        x: { ticks:{color:'#64748b', font:{size:10}, maxRotation: 45}, grid:{color:'#1e2d45'} },
         y: {
           ticks:{ color:'#64748b', precision:0, stepSize:1, callback: v => Number.isInteger(v) ? v : '' },
           grid:{color:'#1e2d45'}, beginAtZero:true,
@@ -2974,7 +3086,7 @@ function loadIndicadores() {
     document.getElementById('ring-' + rings[i] + '-circle').style.strokeDashoffset = offset;
   });
 
-  // CNQ Mensal
+  // CNQ Mensal - usa período do dashboard se disponível
   const months = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
   const curYear = new Date().getFullYear();
   const monthCusto = Array(12).fill(0);
