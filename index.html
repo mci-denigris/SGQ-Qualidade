@@ -6,9 +6,9 @@
 <title>SGQ – Mercedes-Benz</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libhs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;5h00;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --mb-blue: #00adef;
@@ -22,26 +22,6 @@
     --mb-yellow: #f59e0b;
     --mb-purple: #8b5cf6;
   }
-
-  /* ===== LIGHT MODE ===== */
-  body.light-mode {
-    --mb-dark: #f0f4f8;
-    --mb-panel: #ffffff;
-    --mb-card: #e8edf5;
-    --mb-border: #cbd5e1;
-    --mb-accent: #0073b7;
-    color: #1a2236;
-  }
-  body.light-mode #sidebar { background: #ffffff; border-right: 1px solid #cbd5e1; }
-  body.light-mode .panel { background: #ffffff; border: 1px solid #cbd5e1; }
-  body.light-mode input, body.light-mode select, body.light-mode textarea {
-    background: #f8fafc; color: #1a2236; border-color: #cbd5e1;
-  }
-  body.light-mode .kpi-card { background: #ffffff; }
-  body.light-mode .nav-item.active, body.light-mode .nav-item:hover { background: rgba(0,115,183,0.12); }
-  body.light-mode table th { background: #e8edf5; color: #1a2236; }
-  body, body.dark-mode, body.light-mode { transition: background 0.3s, color 0.3s; }
-  #theme-toggle { font-size: 15px; padding: 4px 10px; line-height: 1; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Barlow', sans-serif; background: var(--mb-dark); color: #e2e8f0; min-height: 100vh; overflow-x: hidden; }
   
@@ -163,7 +143,8 @@
   }
   input:focus, select:focus, textarea:focus { border-color: var(--mb-accent); }
   select option { background: #111827; }
-  textarea { resize: vertical; min-height: 90px; }  #aq-descricao { min-height: 200px; }
+  textarea { resize: vertical; min-height: 90px; }
+  #aq-descricao { min-height: 200px; }
 
   /* Tables */
   .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--mb-border); }
@@ -255,6 +236,67 @@
 
   /* GAS setup info box */
   .setup-box { background: #0d1626; border: 1px solid var(--mb-border); border-radius: 10px; padding: 16px; font-family: 'Courier New', monospace; font-size: 12px; color: #94a3b8; overflow-x: auto; margin: 12px 0; white-space: pre-wrap; line-height: 1.6; }
+
+  /* =================== THEME TOGGLE BUTTON =================== */
+  .theme-toggle {
+    background: rgba(255,255,255,0.06); border: 1px solid var(--mb-border);
+    color: #94a3b8; width: 34px; height: 34px; border-radius: 8px;
+    cursor: pointer; display: inline-flex; align-items: center; justify-content: center;
+    font-size: 16px; transition: all 0.2s; flex-shrink: 0; line-height: 1;
+  }
+  .theme-toggle:hover { background: rgba(255,255,255,0.12); color: #e2e8f0; transform: scale(1.05); }
+
+  /* =================== LIGHT THEME =================== */
+  body.light {
+    --mb-dark: #f0f4f8;
+    --mb-panel: #ffffff;
+    --mb-card: #f8fafc;
+    --mb-border: #e2e8f0;
+    --mb-accent: #0077aa;
+    color: #1e293b;
+  }
+  body.light .theme-toggle { background: rgba(0,0,0,0.05); border-color: #e2e8f0; color: #64748b; }
+  body.light .theme-toggle:hover { background: rgba(0,0,0,0.1); color: #1e293b; }
+  body.light .topbar { background: rgba(248,250,252,0.97); }
+  body.light .topbar-title { color: #1e293b; }
+  body.light input, body.light select, body.light textarea { background: #ffffff; color: #1e293b; border-color: #cbd5e1; }
+  body.light input:focus, body.light select:focus, body.light textarea:focus { border-color: var(--mb-accent); }
+  body.light select option { background: #ffffff; color: #1e293b; }
+  body.light .fish-bone { background: #f1f5f9; }
+  body.light .setup-box { background: #f1f5f9; color: #475569; }
+  body.light ::-webkit-scrollbar-thumb { background: #cbd5e1; }
+  body.light .nav-item { color: #475569; }
+  body.light .nav-item:hover { background: rgba(0,119,170,0.06); color: #1e293b; }
+  body.light .nav-item.active { background: rgba(0,119,170,0.1); color: var(--mb-accent); border-left-color: var(--mb-accent); }
+  body.light .nav-section { color: #94a3b8; }
+  body.light .sidebar-footer { color: #94a3b8; }
+  body.light .logo-circle { background: linear-gradient(135deg, #005f8c, #0077aa); }
+  body.light thead { background: rgba(0,119,170,0.05); }
+  body.light th { color: #475569; border-bottom-color: var(--mb-border); }
+  body.light td { border-bottom-color: rgba(226,232,240,0.8); }
+  body.light tr:hover td { background: rgba(0,0,0,0.02); }
+  body.light .btn-secondary { background: rgba(0,0,0,0.04); color: #1e293b; border-color: #e2e8f0; }
+  body.light .btn-secondary:hover { background: rgba(0,0,0,0.08); }
+  body.light .btn-primary { color: #ffffff; }
+  body.light .btn-danger { background: rgba(239,68,68,0.08); }
+  body.light .panel-title { color: #475569; }
+  body.light label { color: #475569; }
+  body.light .kpi-label, body.light .kpi-sub { color: #94a3b8; }
+  body.light .chart-title { color: #475569; }
+  body.light .chart-title::before { background: var(--mb-accent); }
+  body.light .tab { color: #94a3b8; }
+  body.light .tab:hover { color: #1e293b; }
+  body.light .tab.active { color: var(--mb-accent); border-bottom-color: var(--mb-accent); }
+  body.light .close-btn { color: #94a3b8; }
+  body.light .close-btn:hover { color: #1e293b; }
+  body.light .gs-info { color: #475569; }
+  body.light .fish-cause { border-bottom-color: rgba(226,232,240,0.8); }
+  body.light .alert-banner { color: #dc2626; background: rgba(239,68,68,0.08); border-color: rgba(239,68,68,0.2); }
+  body.light .section-title { color: #1e293b; }
+  body.light .menu-toggle { color: #475569; }
+  body.light .modal-overlay { background: rgba(0,0,0,0.5); }
+  body.light .badge-live { background: rgba(16,185,129,0.12); border-color: rgba(16,185,129,0.25); }
+  body.light #topbar-time { color: #94a3b8 !important; }
 </style>
 </head>
 <body>
@@ -325,6 +367,7 @@
     <div class="topbar-right">
       <span class="badge-live">● AO VIVO</span>
       <span id="topbar-time" style="font-size:13px;color:#64748b;"></span>
+      <button class="theme-toggle" onclick="toggleTheme()" id="theme-btn" title="Alternar tema claro / escuro">🌙</button>
     </div>
   </div>
 
@@ -357,7 +400,6 @@
         <span id="dash-period-label" style="font-size:11px;color:#00c6ff;background:rgba(0,198,255,0.1);border:1px solid rgba(0,198,255,0.2);border-radius:99px;padding:3px 10px;white-space:nowrap;"></span>
         <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Atualizar</button>
         <button class="btn btn-secondary btn-sm" onclick="showPage('config', document.querySelector('[onclick*=config]'))">⚙ Configurar Sheets</button>
-        <button class="btn btn-secondary btn-sm" id="theme-toggle" onclick="toggleTheme()" title="Alternar tema">🌙</button>
       </div>
     </div>
 
@@ -1336,8 +1378,33 @@ const STATE = {
   ]
 };
 
+// ==================== THEME ====================
+function initTheme() {
+  const saved = localStorage.getItem('sgq_theme') || 'dark';
+  if (saved === 'light') {
+    document.body.classList.add('light');
+    document.getElementById('theme-btn').textContent = '☀';
+  } else {
+    document.body.classList.remove('light');
+    document.getElementById('theme-btn').textContent = '🌙';
+  }
+}
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light');
+  const btn = document.getElementById('theme-btn');
+  if (isLight) {
+    btn.textContent = '☀';
+    localStorage.setItem('sgq_theme', 'light');
+  } else {
+    btn.textContent = '🌙';
+    localStorage.setItem('sgq_theme', 'dark');
+  }
+}
+
 // ==================== INIT ====================
 document.addEventListener('DOMContentLoaded', () => {
+  initTheme();
   updateClock();
   setInterval(updateClock, 1000);
   document.getElementById('gas-url').value = STATE.gasUrl;
@@ -1401,6 +1468,7 @@ async function syncFromGAS() {
     console.warn('Não foi possível carregar dados do GAS:', e.message);
   }
 }
+
 
 function updateClock() {
   const now = new Date();
@@ -1851,7 +1919,6 @@ function openAQModal(aq) {
   STATE.porquesItems = [];
   STATE.planoItems = [];
   STATE.currentAQ = aq || null;
-  popularSelectTipos();
 
   if (aq) {
     document.getElementById('modal-aq-title').textContent = 'AQ #' + aq.numero;
@@ -1864,7 +1931,8 @@ function openAQModal(aq) {
     document.getElementById('aq-custo').value = aq.custo;
     document.getElementById('aq-tipo-custo').value = aq.tipoCusto;
     document.getElementById('aq-status').value = aq.status;
-    document.getElementById('aq-descricao').value = aq.descricao;    
+    document.getElementById('aq-descricao').value = aq.descricao;
+
     // Load associated data
     const stored = JSON.parse(localStorage.getItem('sgq_aq_data_' + aq.numero) || '{}');
     STATE.brainstormItems = stored.brainstorm || [];
@@ -3284,75 +3352,6 @@ document.getElementById('aq-foto').addEventListener('change', function() {
 
 // Sample data for demo
 // Dados de exemplo removidos — sistema usa apenas dados reais do GAS/localStorage
-
-function toggleTheme() {
-  const isLight = document.body.classList.toggle('light-mode');
-  document.body.classList.toggle('dark-mode', !isLight);
-  const btn = document.getElementById('theme-toggle');
-  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
-  localStorage.setItem('sgq_theme', isLight ? 'light' : 'dark');
-}
-(function initTheme() {
-  const saved = localStorage.getItem('sgq_theme');
-  if (saved === 'light') {
-    document.body.classList.add('light-mode');
-    const btn = document.getElementById('theme-toggle');
-    if (btn) btn.textContent = '☀️';
-  }
-})();
 </script>
-  <!-- AUTO-SAVE SGQ -->
-  <script>
-  (function() {
-    function showToast(msg, ok) {
-      ok = ok !== false;
-      var t = document.getElementById('_as_toast');
-      if (!t) {
-        t = document.createElement('div');
-        t.id = '_as_toast';
-        t.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#1e293b;border:1px solid #334155;color:#94a3b8;font-size:12px;padding:7px 13px;border-radius:8px;transition:opacity 0.4s;opacity:0;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.5);white-space:nowrap;';
-        document.body.appendChild(t);
-      }
-      t.textContent = (ok ? '\u2705 ' : '\u26a0\ufe0f ') + msg;
-      t.style.opacity = '1';
-      clearTimeout(t._timer);
-      t._timer = setTimeout(function(){ t.style.opacity='0'; }, 2500);
-    }
-    var AQ_FIELDS = ['aq-numero','aq-data','aq-unidade','aq-depto','aq-origem','aq-custo','aq-tipo-custo','aq-status','aq-tipo-problema','aq-descricao'];
-    var _deb;
-    function triggerSave() {
-      clearTimeout(_deb);
-      _deb = setTimeout(function() {
-        try { if (typeof saveAQInfo === 'function') { saveAQInfo(); showToast('Salvo automaticamente'); } }
-        catch(e) { showToast('Erro ao salvar', false); }
-      }, 600);
-    }
-    function saveImmediate() {
-      try {
-        if (typeof saveAQInfo === 'function') saveAQInfo();
-        var n = document.getElementById('aq-numero');
-        if (n && n.value && typeof saveSubData === 'function') saveSubData(n.value);
-      } catch(e) {}
-    }
-    function attachAll() {
-      AQ_FIELDS.forEach(function(id) {
-        var el = document.getElementById(id);
-        if (el && !el.dataset.asSaved) {
-          el.addEventListener('input', triggerSave);
-          el.addEventListener('change', triggerSave);
-          el.dataset.asSaved = '1';
-        }
-      });
-    }
-    var obs = new MutationObserver(attachAll);
-    document.addEventListener('DOMContentLoaded', function() {
-      attachAll();
-      obs.observe(document.body, { childList: true, subtree: true });
-      window.addEventListener('beforeunload', saveImmediate);
-    });
-  })();
-  </script>
-  <!-- FIM AUTO-SAVE -->
-
 </body>
 </html>
