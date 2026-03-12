@@ -3301,5 +3301,58 @@ function toggleTheme() {
   }
 })();
 </script>
+  <!-- AUTO-SAVE SGQ -->
+  <script>
+  (function() {
+    function showToast(msg, ok) {
+      ok = ok !== false;
+      var t = document.getElementById('_as_toast');
+      if (!t) {
+        t = document.createElement('div');
+        t.id = '_as_toast';
+        t.style.cssText = 'position:fixed;bottom:20px;right:20px;z-index:99999;background:#1e293b;border:1px solid #334155;color:#94a3b8;font-size:12px;padding:7px 13px;border-radius:8px;transition:opacity 0.4s;opacity:0;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,0.5);white-space:nowrap;';
+        document.body.appendChild(t);
+      }
+      t.textContent = (ok ? '\u2705 ' : '\u26a0\ufe0f ') + msg;
+      t.style.opacity = '1';
+      clearTimeout(t._timer);
+      t._timer = setTimeout(function(){ t.style.opacity='0'; }, 2500);
+    }
+    var AQ_FIELDS = ['aq-numero','aq-data','aq-unidade','aq-depto','aq-origem','aq-custo','aq-tipo-custo','aq-status','aq-tipo-problema','aq-descricao'];
+    var _deb;
+    function triggerSave() {
+      clearTimeout(_deb);
+      _deb = setTimeout(function() {
+        try { if (typeof saveAQInfo === 'function') { saveAQInfo(); showToast('Salvo automaticamente'); } }
+        catch(e) { showToast('Erro ao salvar', false); }
+      }, 600);
+    }
+    function saveImmediate() {
+      try {
+        if (typeof saveAQInfo === 'function') saveAQInfo();
+        var n = document.getElementById('aq-numero');
+        if (n && n.value && typeof saveSubData === 'function') saveSubData(n.value);
+      } catch(e) {}
+    }
+    function attachAll() {
+      AQ_FIELDS.forEach(function(id) {
+        var el = document.getElementById(id);
+        if (el && !el.dataset.asSaved) {
+          el.addEventListener('input', triggerSave);
+          el.addEventListener('change', triggerSave);
+          el.dataset.asSaved = '1';
+        }
+      });
+    }
+    var obs = new MutationObserver(attachAll);
+    document.addEventListener('DOMContentLoaded', function() {
+      attachAll();
+      obs.observe(document.body, { childList: true, subtree: true });
+      window.addEventListener('beforeunload', saveImmediate);
+    });
+  })();
+  </script>
+  <!-- FIM AUTO-SAVE -->
+
 </body>
 </html>
