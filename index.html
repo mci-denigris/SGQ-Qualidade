@@ -6,7 +6,7 @@
 <title>SGQ – Mercedes-Benz</title>
 <script src="https://cdn.tailwindcss.com"></script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libhs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
@@ -1834,7 +1834,7 @@ function openAQModal(aq) {
   if (aq) {
     document.getElementById('modal-aq-title').textContent = 'AQ #' + aq.numero;
     document.getElementById('aq-numero').value = aq.numero;
-    document.getElementById('aq-data').value = aq.data;
+    document.getElementById('aq-data').value = aq.data ? aq.data.substring(0, 10) : '';
     document.getElementById('aq-unidade').value = aq.unidade;
     document.getElementById('aq-depto').value = aq.departamento;
     document.getElementById('aq-origem').value = aq.origem;
@@ -2430,7 +2430,7 @@ function openPOPModal(pop, idx) {
     document.getElementById('pop-codigo').value = pop.codigo;
     document.getElementById('pop-versao').value = pop.versao;
     document.getElementById('pop-responsavel').value = pop.responsavel;
-    document.getElementById('pop-data').value = pop.dataRevisao;
+    document.getElementById('pop-data').value = pop.dataRevisao ? pop.dataRevisao.substring(0, 10) : '';
     document.getElementById('pop-processo').value = pop.processo;
     document.getElementById('pop-elaborado').value = pop.elaborado || '';
     document.getElementById('pop-analisado').value = pop.analisado || '';
