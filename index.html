@@ -8,7 +8,7 @@
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libhs/jszip/3.10.1/jszip.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;500;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Barlow:wght@300;400;5h00;600;700&family=Barlow+Condensed:wght@600;700&display=swap" rel="stylesheet">
 <style>
   :root {
     --mb-blue: #00adef;
@@ -143,7 +143,7 @@
   }
   input:focus, select:focus, textarea:focus { border-color: var(--mb-accent); }
   select option { background: #111827; }
-  textarea { resize: vertical; min-height: 90px; }  #aq-descricao { resize: none; overflow: hidden; min-height: 120px; line-height: 1.6; }
+  textarea { resize: vertical; min-height: 90px; }  #aq-descricao { min-height: 200px; }
 
   /* Tables */
   .table-wrap { overflow-x: auto; border-radius: 12px; border: 1px solid var(--mb-border); }
@@ -936,7 +936,7 @@ function json(obj) {
           </div>
           <div class="form-group full">
             <label>Descrição do Problema</label>
-            <textarea id="aq-descricao" placeholder="Descreva detalhadamente o problema encontrado..." oninput="autoResizeTextarea(this)"></textarea>
+            <textarea id="aq-descricao" placeholder="Descreva detalhadamente o problema encontrado..."></textarea>
           </div>
           <div class="form-group full">
             <label>Foto do Problema</label>
@@ -1381,7 +1381,7 @@ async function syncFromGAS() {
   }
 }
 
-function autoResizeTextarea(el) {  el.style.height = 'auto';
+function updateClock() {
   const now = new Date();
   document.getElementById('topbar-time').textContent = now.toLocaleTimeString('pt-BR');
   document.getElementById('sidebar-date').textContent = now.toLocaleDateString('pt-BR', {weekday:'short', day:'2-digit', month:'short'});
@@ -1842,8 +1842,7 @@ function openAQModal(aq) {
     document.getElementById('aq-custo').value = aq.custo;
     document.getElementById('aq-tipo-custo').value = aq.tipoCusto;
     document.getElementById('aq-status').value = aq.status;
-    document.getElementById('aq-descricao').value = aq.descricao;    setTimeout(() => autoResizeTextarea(document.getElementById('aq-descricao')), 10);
-
+    document.getElementById('aq-descricao').value = aq.descricao;    
     // Load associated data
     const stored = JSON.parse(localStorage.getItem('sgq_aq_data_' + aq.numero) || '{}');
     STATE.brainstormItems = stored.brainstorm || [];
@@ -3237,7 +3236,7 @@ function statusBadge2(s) {
 function formatDate(d) {
   if (!d) return '–';
   try {
-    const parts = d.split('-');
+    const parts = d.substring(0, 10).split('-');
     return parts[2] + '/' + parts[1] + '/' + parts[0];
   } catch { return d; }
 }
