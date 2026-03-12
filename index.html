@@ -22,6 +22,26 @@
     --mb-yellow: #f59e0b;
     --mb-purple: #8b5cf6;
   }
+
+  /* ===== LIGHT MODE ===== */
+  body.light-mode {
+    --mb-dark: #f0f4f8;
+    --mb-panel: #ffffff;
+    --mb-card: #e8edf5;
+    --mb-border: #cbd5e1;
+    --mb-accent: #0073b7;
+    color: #1a2236;
+  }
+  body.light-mode #sidebar { background: #ffffff; border-right: 1px solid #cbd5e1; }
+  body.light-mode .panel { background: #ffffff; border: 1px solid #cbd5e1; }
+  body.light-mode input, body.light-mode select, body.light-mode textarea {
+    background: #f8fafc; color: #1a2236; border-color: #cbd5e1;
+  }
+  body.light-mode .kpi-card { background: #ffffff; }
+  body.light-mode .nav-item.active, body.light-mode .nav-item:hover { background: rgba(0,115,183,0.12); }
+  body.light-mode table th { background: #e8edf5; color: #1a2236; }
+  body, body.dark-mode, body.light-mode { transition: background 0.3s, color 0.3s; }
+  #theme-toggle { font-size: 15px; padding: 4px 10px; line-height: 1; }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Barlow', sans-serif; background: var(--mb-dark); color: #e2e8f0; min-height: 100vh; overflow-x: hidden; }
   
@@ -337,6 +357,7 @@
         <span id="dash-period-label" style="font-size:11px;color:#00c6ff;background:rgba(0,198,255,0.1);border:1px solid rgba(0,198,255,0.2);border-radius:99px;padding:3px 10px;white-space:nowrap;"></span>
         <button class="btn btn-secondary btn-sm" onclick="loadDashboard()">↻ Atualizar</button>
         <button class="btn btn-secondary btn-sm" onclick="showPage('config', document.querySelector('[onclick*=config]'))">⚙ Configurar Sheets</button>
+        <button class="btn btn-secondary btn-sm" id="theme-toggle" onclick="toggleTheme()" title="Alternar tema">🌙</button>
       </div>
     </div>
 
@@ -1830,6 +1851,7 @@ function openAQModal(aq) {
   STATE.porquesItems = [];
   STATE.planoItems = [];
   STATE.currentAQ = aq || null;
+  popularSelectTipos();
 
   if (aq) {
     document.getElementById('modal-aq-title').textContent = 'AQ #' + aq.numero;
@@ -3262,6 +3284,22 @@ document.getElementById('aq-foto').addEventListener('change', function() {
 
 // Sample data for demo
 // Dados de exemplo removidos — sistema usa apenas dados reais do GAS/localStorage
+
+function toggleTheme() {
+  const isLight = document.body.classList.toggle('light-mode');
+  document.body.classList.toggle('dark-mode', !isLight);
+  const btn = document.getElementById('theme-toggle');
+  if (btn) btn.textContent = isLight ? '☀️' : '🌙';
+  localStorage.setItem('sgq_theme', isLight ? 'light' : 'dark');
+}
+(function initTheme() {
+  const saved = localStorage.getItem('sgq_theme');
+  if (saved === 'light') {
+    document.body.classList.add('light-mode');
+    const btn = document.getElementById('theme-toggle');
+    if (btn) btn.textContent = '☀️';
+  }
+})();
 </script>
 </body>
 </html>
