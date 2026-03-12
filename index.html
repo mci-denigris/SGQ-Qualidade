@@ -1979,8 +1979,12 @@ function saveAQInfo() {
   }
 
   const idx = STATE.aqList.findIndex(a => a.numero === aq.numero);
-  if (idx >= 0) STATE.aqList[idx] = aq;
-  else STATE.aqList.push(aq);
+  if (idx >= 0) {
+    alert('Já existe uma AQ com esse número.');
+    return;
+  } else {
+    STATE.aqList.push(aq);
+  }
 
   localStorage.setItem('sgq_aq', JSON.stringify(STATE.aqList));
   STATE.currentAQ = aq;
