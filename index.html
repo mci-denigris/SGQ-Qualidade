@@ -3361,17 +3361,12 @@ async function testConnection() {
 async function gasPost(action, data) {
   if (!STATE.gasUrl) return;
   try {
-    // Tenta POST direto primeiro (funciona quando GAS está publicado corretamente)
-    const res = await fetch(STATE.gasUrl, {
-      method: "POST",
-      headers: { "Content-Type": "text/plain" }, // text/plain evita preflight CORS
-      body: JSON.stringify({ action, data })
-    });
-    const json = await res.json().catch(() => null);
-    if (json && (json.inserted || json.updated)) return json;
-    // Fallback: GET com payload na URL (modo no-cors — sem retorno, mas funciona)
+    // GAS so aceita GET cross-origin de GitHub Pages (POST e bloqueado por CORS).
+    // Enviamos o payload como parametro na URL - o doGet do GAS processa e salva.
     const payload = encodeURIComponent(JSON.stringify({ action, data }));
-    await fetch(STATE.gasUrl + "?payload=" + payload, { method: "GET", mode: "no-cors" });
+    const url = STATE.gasUrl + "?payload=" + payload;
+    // mode: "no-cors" - nao recebemos resposta, mas o GAS executa e salva na planilha
+    await fetch(url, { method: "GET", mode: "no-cors" });
   } catch(e) {
     console.warn("GAS sync error:", e);
   }
